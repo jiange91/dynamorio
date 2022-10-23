@@ -3470,14 +3470,6 @@ if (BUILD_CLIENTS)
         "-simulator_type miss_analyzer -miss_count_threshold 5000 -miss_frac_threshold 0.25" "")
     endif ()
 
-    # Stress-test drcachesim with drstatecmp checks.
-    if (AARCH64)
-      torunonly_drcachesim(drstatecmp-fuzz drstatecmp-fuzz-app "-trace_after_instrs 10M -enable_drstatecmp" "" "")
-    endif ()
-    if (NOT WIN32)
-      torunonly_drcachesim(drstatecmp-delay-simple ${ci_shared_app} "-trace_after_instrs 20000 -exit_after_tracing 10000 -enable_drstatecmp" "")
-    endif (NOT WIN32)
-
     # Test other analysis tools
     macro (torunonly_simtool testname exetgt sim_ops app_args)
       torunonly_ci(tool.${testname} ${exetgt} drcachesim
@@ -3563,6 +3555,9 @@ if (BUILD_CLIENTS)
     prefix_cmd_if_necessary(drcachesim_path ON ${drcachesim_path})
     get_target_path_for_execution(drraw2trace_path drraw2trace "${location_suffix}")
     prefix_cmd_if_necessary(drraw2trace_path ON ${drraw2trace_path})
+
+    torunonly_drcachesim(opcode_mix ${ci_shared_app}
+      "-instr_encodings -simulator_type opcode_mix" "")
 
     # The sim_atops should start with @ and be in @-as-space format (hence "atops").
     # If the exetgt has drcachesim statically linked in, the _nodr property must be
@@ -3979,7 +3974,8 @@ if (BUILD_CLIENTS)
         "" "@-simulator_type@basic_counts" "")
       unset(tool.drcacheoff.allasm-repstr-basic-counts_rawtemp) # use preprocessor
       torunonly_drcachesim(allasm-repstr-basic-counts allasm_repstr
-        "-simulator_type basic_counts" "")
+        # We test counting encodings for online.
+        "-instr_encodings -simulator_type basic_counts" "")
       unset(tool.drcachesim.allasm-repstr-basic-counts_rawtemp) # use preprocessor
     endif (UNIX AND X86 AND X64)
 
@@ -4043,6 +4039,19 @@ if (BUILD_CLIENTS)
       set(${testname_full}_postcmd2
         "${prefetch_analyzer_path}@-trace_dir@${testname_full}.*.dir/trace")
     endif ()
+
+    # Stress-test drcachesim with drstatecmp checks.
+    if (AARCH64)
+      torunonly_drcachesim(drstatecmp-fuzz drstatecmp-fuzz-app
+        "-trace_after_instrs 10M -enable_drstatecmp" "" "")
+    endif ()
+    if (NOT WIN32)
+      torunonly_drcachesim(drstatecmp-delay-simple ${ci_shared_app}
+        "-trace_after_instrs 20000 -enable_drstatecmp" "")
+      torunonly_drcacheoff(drstatecmp-delay-simple ${ci_shared_app}
+        "-trace_after_instrs 20000 -enable_drstatecmp"
+        "@-simulator_type@basic_counts" "")
+    endif (NOT WIN32)
 
   endif (NOT ANDROID)
 
@@ -5340,3 +5349,21 @@ if (NOT ANDROID AND AARCHXX)
       PROPERTIES LABELS RUNS_ON_QEMU)
   endif ()
 endif (NOT ANDROID AND AARCHXX)
+
+# XXX i#5437, i#5431: While we work through Ubuntu22 issues we want our new GA CI job to
+# just run sanity tests that do pass now as a glibc change detector to see if our
+# workarounds so far break over time.
+set_tests_properties(
+  code_api|common.broadfun
+  PROPERTIES LABELS UBUNTU_22)
+if (BUILD_SAMPLES AND NOT ANDROID)
+  set_tests_properties(
+    code_api|sample.bbsize
+    PROPERTIES LABELS UBUNTU_22)
+endif ()
+if (BUILD_CLIENTS AND NOT ANDROID)
+  set_tests_properties(
+    code_api|tool.drcachesim.simple
+    code_api|tool.drcacheoff.simple
+    PROPERTIES LABELS UBUNTU_22)
+endif ()

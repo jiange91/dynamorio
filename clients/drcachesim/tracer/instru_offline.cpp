@@ -476,7 +476,7 @@ offline_instru_t::record_instr_encodings(void *drcontext, app_pc tag_pc,
     for (instr_t *instr = instrlist_first(ilist); instr != NULL;
          instr = instr_get_next(instr)) {
         instr_t *to_copy = nullptr;
-        emulated_instr_t emulation_info = {};
+        emulated_instr_t emulation_info = { sizeof(emulation_info), 0 };
         if (in_emulation_region) {
             if (drmgr_is_emulation_end(instr))
                 in_emulation_region = false;
@@ -751,6 +751,17 @@ offline_instru_t::instrument_ibundle(void *drcontext, instrlist_t *ilist, instr_
                                      int num_delay_instrs)
 {
     // The post-processor fills in all instr info other than our once-per-bb entry.
+    return adjust;
+}
+
+int
+offline_instru_t::instrument_instr_encoding(void *drcontext, void *tag, void *bb_field,
+                                            instrlist_t *ilist, instr_t *where,
+                                            reg_id_t reg_ptr, int adjust, instr_t *app)
+{
+    // We emit non-module-code or modified-module-code encodings separately in
+    // record_instr_encodings().  Encodings for static code are added in the
+    // post-processor.
     return adjust;
 }
 
