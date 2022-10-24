@@ -95,6 +95,7 @@
 std::string
 raw2trace_directory_t::open_thread_files()
 {
+    // printf("open_thread_files: %s\n", indir_.c_str());
     VPRINT(1, "Iterating dir %s\n", indir_.c_str());
     directory_iterator_t end;
     directory_iterator_t iter(indir_);
@@ -112,6 +113,7 @@ raw2trace_directory_t::open_thread_files()
 std::string
 raw2trace_directory_t::open_thread_log_file(const char *basename)
 {
+    // printf("open_thread_log_file: %s\n", basename);
     char path[MAXIMUM_PATH];
     CHECK(basename[0] != '/', "dir iterator entry %s should not be an absolute path\n",
           basename);
@@ -261,10 +263,28 @@ raw2trace_directory_t::window_subdir_if_present(const std::string &dir)
     if (is_window_subdir(dir))
         return dir;
     std::string windir = dir + std::string(DIRSEP) + WINDOW_SUBDIR_FIRST;
-    if (directory_iterator_t::is_directory(windir))
+    if (directory_iterator_t::is_directory(windir)) {
         return windir;
+    }
     return dir;
 }
+
+// ADDED
+bool 
+raw2trace_directory_t::add_window_subdir(uint32_t window_id)
+{
+    char subdir[20];
+    sprintf(subdir, "window.%04d", window_id);
+    indir_ = indir_ + std::string(DIRSEP) + std::string(subdir);
+    if (directory_iterator_t::is_directory(indir_)) {
+        // create subdir for each window.
+        outdir_ = outdir_ + std::string(DIRSEP) + std::string(subdir);
+        return true;
+    }
+    else 
+        return false;
+}
+// END
 
 std::string
 raw2trace_directory_t::tracedir_from_rawdir(const std::string &rawdir_in)
@@ -298,7 +318,10 @@ raw2trace_directory_t::tracedir_from_rawdir(const std::string &rawdir_in)
     // If it contains a "/raw" or "/trace" subdir, add "/trace" to it.
     if (directory_iterator_t::is_directory(rawdir + raw_sub) ||
         directory_iterator_t::is_directory(rawdir + trace_sub)) {
-        return window_subdir_if_present(rawdir + trace_sub);
+        // ADDED
+        return rawdir + trace_sub;
+        // return window_subdir_if_present(rawdir + trace_sub);
+        // END
     }
     // Use it directly.
     return rawdir;
@@ -324,9 +347,15 @@ raw2trace_directory_t::initialize(const std::string &indir, const std::string &o
          indir_.rfind(OUTFILE_SUBDIR) < indir_.size() - strlen(OUTFILE_SUBDIR))) {
         indir_ += std::string(DIRSEP) + OUTFILE_SUBDIR;
     }
+    // printf("indir_: %s\n", indir_.c_str());
+
     std::string modfile_dir = indir_;
     // Support window subdirs.
-    indir_ = window_subdir_if_present(indir_);
+    
+    // DELETED
+    // indir_ = window_subdir_if_present(indir_);
+    // END
+
     if (is_window_subdir(indir_)) {
         // If we're operating on a specific window, point at the parent for the modfile.
         // Windows dr_open_file() doesn't like "..".
@@ -336,6 +365,7 @@ raw2trace_directory_t::initialize(const std::string &indir, const std::string &o
             return "Window subdir missing slash";
         modfile_dir.erase(pos);
     }
+    printf("modfile_dir: %s\n", modfile_dir.c_str());
 
     // Support a default outdir_.
     if (outdir_.empty()) {
@@ -346,12 +376,14 @@ raw2trace_directory_t::initialize(const std::string &indir, const std::string &o
             }
         }
     }
+    printf("indir_: %s, outdir_: %s\n", indir_.c_str(), outdir_.c_str());
     std::string modfilename =
         modfile_dir + std::string(DIRSEP) + DRMEMTRACE_MODULE_LIST_FILENAME;
     std::string err = read_module_file(modfilename);
     if (!err.empty())
         return err;
-
+    printf("modfilename: %s\n", modfilename.c_str());
+    
     std::string encoding_filename =
         modfile_dir + std::string(DIRSEP) + DRMEMTRACE_ENCODING_FILENAME;
     // Older traces do not have encoding files.
@@ -363,8 +395,42 @@ raw2trace_directory_t::initialize(const std::string &indir, const std::string &o
         if (encoding_file_ == INVALID_FILE)
             return "Failed to open encoding file " + encoding_filename;
     }
+    
+    // ADDED
+    printf("indir: %s\n", indir_.c_str());
+    if (window_subdir_if_present(indir_) == indir_) {
+        // if windir exists and indir_ contains windir 
+        // Or if windir doesn't exsit at all.
+        return open_thread_files();
+    }
+    else {
+        // windir exists but indir_ doesn't contain windir
+        std::string indir_without_window = indir_;
+        std::string outdir_without_window = outdir_;
+        bool windir_present = false;
+        for (int window_id = 0; ; ++window_id) {
+            if (!add_window_subdir(window_id))
+                break;
+            if (!directory_iterator_t::is_directory(outdir_)) {
+                if (!directory_iterator_t::create_directory(outdir_)) {
+                    return "Failed to create output dir " + outdir_;
+                }
+            }
+            windir_present = true;
+            std::string err = open_thread_files();
+            indir_ = indir_without_window;
+            outdir_ = outdir_without_window;
+            if (!err.empty())
+                return err;
+        }
+        DR_ASSERT(windir_present == true);
+    }
+    return "";
+    // END
 
-    return open_thread_files();
+    // DELETED
+    // return open_thread_files();
+    // END
 }
 
 std::string

@@ -251,20 +251,20 @@ typedef enum {
      * For raw offline traces, a value of 0 can be assumed to target the start of a
      * block and so there is no loss of accuracy when post-processing.
      */
-    TRACE_MARKER_TYPE_KERNEL_EVENT,
+    TRACE_MARKER_TYPE_KERNEL_EVENT, // 0
     /**
      * The subsequent instruction is the target of a system call that changes the
      * context: a signal return on UNIX, or a callback return or NtContinue or
      * NtSetContextThread on Windows.
      */
-    TRACE_MARKER_TYPE_KERNEL_XFER,
+    TRACE_MARKER_TYPE_KERNEL_XFER, // 1
     // XXX i#5634: Add 64-bit marker value support to 32-bit to avoid truncating.
     /**
      * The marker value contains a timestamp for this point in the trace, in units
      * of microseconds since Jan 1, 1601 (the UTC time).  For 32-bit, the value
      * is truncated to 32 bits.
      */
-    TRACE_MARKER_TYPE_TIMESTAMP,
+    TRACE_MARKER_TYPE_TIMESTAMP, // 2
     /**
      * The marker value contains the cpu identifier of the cpu this thread was running
      * on at this point in the trace.  A value of (uintptr_t)-1 indicates that the
@@ -272,14 +272,14 @@ typedef enum {
      * set up.  For Linux, the bottom 12 bits hold the cpu identifier and the upper
      * bits hold the socket/node number.
      */
-    TRACE_MARKER_TYPE_CPU_ID,
+    TRACE_MARKER_TYPE_CPU_ID, // 3
 
     /**
      * The marker value contains the function id defined by the user in the
      * -record_function (and -record_heap_value if -record_heap is specified)
      * option.
      */
-    TRACE_MARKER_TYPE_FUNC_ID,
+    TRACE_MARKER_TYPE_FUNC_ID, // 4
 
     // XXX i#3048: replace return address with callstack information.
     /**
@@ -287,7 +287,7 @@ typedef enum {
      * function, whose id is specified by the closest previous
      * #TRACE_MARKER_TYPE_FUNC_ID marker entry.
      */
-    TRACE_MARKER_TYPE_FUNC_RETADDR,
+    TRACE_MARKER_TYPE_FUNC_RETADDR, // 5
 
     /**
      * The marker value contains one argument value of the just-entered
@@ -297,14 +297,14 @@ typedef enum {
      * -record_function (or pre-defined functions in -record_heap_value if
      * -record_heap is specified).
      */
-    TRACE_MARKER_TYPE_FUNC_ARG,
+    TRACE_MARKER_TYPE_FUNC_ARG, // 6
 
     /**
      * The marker value contains the return value of the just-entered function,
      * whose id is specified by the closest previous #TRACE_MARKER_TYPE_FUNC_ID
      * marker entry
      */
-    TRACE_MARKER_TYPE_FUNC_RETVAL,
+    TRACE_MARKER_TYPE_FUNC_RETVAL, // 7
 
     /* This is a non-public type only present in an offline raw trace. To support a
      * full 64-bit marker value in an offline trace where
@@ -313,41 +313,41 @@ typedef enum {
      * first, and its valueA is left-shited 32 and then OR-ed with the subsequent
      * entry's valueA to produce the final marker value.
      */
-    TRACE_MARKER_TYPE_SPLIT_VALUE,
+    TRACE_MARKER_TYPE_SPLIT_VALUE, // 8
 
     /**
      * The marker value contains the OFFLINE_FILE_TYPE_* bitfields of type
      * #offline_file_type_t identifying the architecture and other key high-level
      * attributes of the trace.
      */
-    TRACE_MARKER_TYPE_FILETYPE,
+    TRACE_MARKER_TYPE_FILETYPE, // 9
 
     /**
      * The marker value contains the traced processor's cache line size in
      * bytes.
      */
-    TRACE_MARKER_TYPE_CACHE_LINE_SIZE,
+    TRACE_MARKER_TYPE_CACHE_LINE_SIZE, // 10
 
     /**
      * The marker value contains the count of dynamic instruction executions in
      * this software thread since the start of the trace.  This marker type is only
      * present in online-cache-filtered traces and is placed at thread exit.
      */
-    TRACE_MARKER_TYPE_INSTRUCTION_COUNT,
+    TRACE_MARKER_TYPE_INSTRUCTION_COUNT, // 11
 
     /**
      * The marker value contains the version of the trace format: a value
      * of type #trace_version_t.  The marker is present in the first few entries
      * of a trace file.
      */
-    TRACE_MARKER_TYPE_VERSION,
+    TRACE_MARKER_TYPE_VERSION, // 12
 
     /**
      * Serves to further identify #TRACE_MARKER_TYPE_KERNEL_EVENT as a
      * restartable sequence abort handler.  This will always be immediately followed
      * by #TRACE_MARKER_TYPE_KERNEL_EVENT.
      */
-    TRACE_MARKER_TYPE_RSEQ_ABORT,
+    TRACE_MARKER_TYPE_RSEQ_ABORT, // 13
 
     /**
      * Identifies in the marker value the ordinal of a window during a multi-window
@@ -355,7 +355,7 @@ typedef enum {
      * When a marker with an ordinal value different from the last-seen marker
      * appears, a time gap may exist immediately before this new marker.
      */
-    TRACE_MARKER_TYPE_WINDOW_ID,
+    TRACE_MARKER_TYPE_WINDOW_ID, // 14
 
     /**
      * The marker value contains the physical address corresponding to the subsequent
@@ -366,13 +366,13 @@ typedef enum {
      * #TRACE_MARKER_TYPE_PHYSICAL_ADDRESS_NOT_AVAILABLE will be present instead,
      * without a corresponding #TRACE_MARKER_TYPE_VIRTUAL_ADDRESS.
      */
-    TRACE_MARKER_TYPE_PHYSICAL_ADDRESS,
+    TRACE_MARKER_TYPE_PHYSICAL_ADDRESS, // 15
 
     /**
      * Indicates a failure to obtain the physical address corresponding to the
      * virtual address contained in the marker value.
      */
-    TRACE_MARKER_TYPE_PHYSICAL_ADDRESS_NOT_AVAILABLE,
+    TRACE_MARKER_TYPE_PHYSICAL_ADDRESS_NOT_AVAILABLE, // 16
 
     /**
      * The marker value contains the virtual address corresponding to the prior
@@ -383,18 +383,18 @@ typedef enum {
      * #TRACE_MARKER_TYPE_PHYSICAL_ADDRESS_NOT_AVAILABLE will be present instead,
      * without a corresponding #TRACE_MARKER_TYPE_VIRTUAL_ADDRESS.
      */
-    TRACE_MARKER_TYPE_VIRTUAL_ADDRESS,
+    TRACE_MARKER_TYPE_VIRTUAL_ADDRESS, // 17
 
     /**
      * The marker value contains the traced process's page size in bytes.
      */
-    TRACE_MARKER_TYPE_PAGE_SIZE,
+    TRACE_MARKER_TYPE_PAGE_SIZE, // 18
 
     /**
      * This marker is emitted prior to each system call when -enable_kernel_tracing is
      * specified. The marker value contains a unique system call identifier.
      */
-    TRACE_MARKER_TYPE_SYSCALL_ID,
+    TRACE_MARKER_TYPE_SYSCALL_ID, // 19
 
     /**
      * This top-level marker identifies the instruction count in each chunk

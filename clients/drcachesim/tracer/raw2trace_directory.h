@@ -77,6 +77,11 @@ public:
     static std::string
     window_subdir_if_present(const std::string &dir);
 
+    // ADDED
+    bool 
+    add_window_subdir(uint32_t window_id);
+    // END
+
     static bool
     is_window_subdir(const std::string &dir);
 

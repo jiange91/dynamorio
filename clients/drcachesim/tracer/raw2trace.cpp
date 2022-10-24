@@ -621,6 +621,7 @@ raw2trace_t::process_next_thread_buffer(raw2trace_thread_data_t *tdata,
         // and encoding_file_ == INVALID_FILE since we have several tests with
         // that setup.  We do complain during processing about unknown instructions.
         if (tdata->saw_header) {
+            // printf("saw_header\n");
             tdata->error = process_header(tdata);
             if (!tdata->error.empty())
                 return tdata->error;
@@ -630,6 +631,7 @@ raw2trace_t::process_next_thread_buffer(raw2trace_thread_data_t *tdata,
     byte *buf_base = reinterpret_cast<byte *>(get_write_buffer(tdata));
     bool last_bb_handled = true;
     for (; in_entry != nullptr; in_entry = get_next_entry(tdata)) {
+        // printf("entry: %ld\n", in_entry->extended.type);
         // Make a copy to avoid clobbering the entry we pass to process_offline_entry()
         // when it calls get_next_entry() on its own.
         offline_entry_t entry = *in_entry;
@@ -763,6 +765,7 @@ raw2trace_t::do_conversion()
         // The files can be converted concurrently.
         std::vector<std::thread> threads;
         VPRINT(1, "Creating %d worker threads\n", worker_count_);
+        // printf("worker_count_: %d\n", worker_count_);
         threads.reserve(worker_count_);
         for (int i = 0; i < worker_count_; ++i) {
             threads.push_back(

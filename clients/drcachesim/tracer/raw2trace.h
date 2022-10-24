@@ -804,6 +804,7 @@ protected:
         trace_entry_t *buf_base = impl()->get_write_buffer(tls);
         byte *buf = reinterpret_cast<byte *>(buf_base);
         if (in_entry->extended.type == OFFLINE_TYPE_EXTENDED) {
+            // printf("ext: %ld %ld %ld\n", in_entry->extended.ext, in_entry->extended.valueA, in_entry->extended.valueB);
             if (in_entry->extended.ext == OFFLINE_EXT_TYPE_FOOTER) {
                 DR_CHECK(tid != INVALID_THREAD_ID, "Missing thread id");
                 impl()->log(2, "Thread %d exit\n", (uint)tid);

@@ -132,26 +132,83 @@ analyzer_t::init_file_reader(const std::string &trace_path, int verbosity)
         }
     }
     if (parallel_ && directory_iterator_t::is_directory(trace_path)) {
-        directory_iterator_t end;
-        directory_iterator_t iter(trace_path);
-        if (!iter) {
-            ERRMSG("Failed to list directory %s: %s", trace_path.c_str(),
-                   iter.error_string().c_str());
-            return false;
+        // ADDED
+        printf("trace_path: %s\n", trace_path.c_str());
+        std::vector<std::string> windirs;
+        if (trace_path.rfind("window") != std::string::npos || 
+            !directory_iterator_t::is_directory(trace_path + std::string(DIRSEP) + "window.0000")) {
+            // if (raw2trace_directory_t::window_subdir_if_present(trace_path) == trace_path) {
+            // if windir exists and trace_path contains windir 
+            // Or if windir doesn't exsit at all.
+            windirs.push_back(trace_path);
         }
-        for (; iter != end; ++iter) {
-            const std::string fname = *iter;
-            if (fname == "." || fname == "..")
-                continue;
-            const std::string path = trace_path + DIRSEP + fname;
-            std::unique_ptr<reader_t> reader = get_reader(path, verbosity);
-            if (!reader) {
+        else {
+            // windir exists but trace_path doesn't contain windir
+            // bool windir_present = false;
+            for (int window_id = 0; ; ++window_id) {
+                char subdir[20];
+                sprintf(subdir, "window.%04d", window_id);
+                std::string windir = trace_path + std::string(DIRSEP) + std::string(subdir);
+                if (directory_iterator_t::is_directory(windir)) {
+                    windirs.push_back(windir);
+                    // windir_present = true;
+                }
+                else {
+                    break;
+                }
+            }
+            // DR_ASSERT(windir_present == true);
+        }
+
+        for (std::string windir : windirs) {
+            directory_iterator_t end;
+            directory_iterator_t iter(windir);
+            if (!iter) {
+                ERRMSG("Failed to list directory %s: %s", windir.c_str(),
+                    iter.error_string().c_str());
                 return false;
             }
-            thread_data_.push_back(analyzer_shard_data_t(
-                static_cast<int>(thread_data_.size()), std::move(reader), path));
-            VPRINT(this, 2, "Opened reader for %s\n", path.c_str());
+            for (; iter != end; ++iter) {
+                const std::string fname = *iter;
+                if (fname == "." || fname == "..")
+                    continue;
+                const std::string path = windir + DIRSEP + fname;
+                printf("open: %s\n", path.c_str());
+                std::unique_ptr<reader_t> reader = get_reader(path, verbosity);
+                if (!reader) {
+                    return false;
+                }
+                thread_data_.push_back(analyzer_shard_data_t(
+                    static_cast<int>(thread_data_.size()), std::move(reader), path));
+                VPRINT(this, 2, "Opened reader for %s\n", path.c_str());
+            }
         }
+        
+        // END
+
+        // DELETED
+        // directory_iterator_t end;
+        // directory_iterator_t iter(trace_path);
+        // if (!iter) {
+        //     ERRMSG("Failed to list directory %s: %s", trace_path.c_str(),
+        //            iter.error_string().c_str());
+        //     return false;
+        // }
+        // for (; iter != end; ++iter) {
+        //     const std::string fname = *iter;
+        //     if (fname == "." || fname == "..")
+        //         continue;
+        //     const std::string path = trace_path + DIRSEP + fname;
+        //     std::unique_ptr<reader_t> reader = get_reader(path, verbosity);
+        //     if (!reader) {
+        //         return false;
+        //     }
+        //     thread_data_.push_back(analyzer_shard_data_t(
+        //         static_cast<int>(thread_data_.size()), std::move(reader), path));
+        //     VPRINT(this, 2, "Opened reader for %s\n", path.c_str());
+        // }
+        // END
+
         // Like raw2trace, we use a simple round-robin static work assigment.  This
         // could be improved later with dynamic work queue for better load balancing.
         if (worker_count_ <= 0)
@@ -166,11 +223,16 @@ analyzer_t::init_file_reader(const std::string &trace_path, int verbosity)
         }
     } else {
         parallel_ = false;
-        serial_trace_iter_ = get_reader(trace_path, verbosity);
+        // ADDED
+        std::string path = trace_path + std::string(DIRSEP) + "window.0000";
+        path = directory_iterator_t::is_directory(path) ? path : trace_path;
+        printf("open2: %s\n", path.c_str());
+        // END
+        serial_trace_iter_ = get_reader(/* trace_path */ path, verbosity);
         if (!serial_trace_iter_) {
             return false;
         }
-        VPRINT(this, 2, "Opened serial reader for %s\n", trace_path.c_str());
+        VPRINT(this, 2, "Opened serial reader for %s\n", /*trace_path.c_str()*/ path.c_str());
     }
     // It's ok if trace_end_ is a different type from serial_trace_iter_, they
     // will still compare true if both at EOF.

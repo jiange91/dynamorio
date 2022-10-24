@@ -139,7 +139,9 @@ reached_traced_instrs_threshold(void *drcontext)
     // We delay creating a new ouput dir until tracing is enabled again, to avoid
     // an empty final dir.
     DR_ASSERT(tracing_disabled.load(std::memory_order_acquire) == BBDUP_MODE_TRACE);
+    // MARK
     tracing_disabled.store(BBDUP_MODE_COUNT, std::memory_order_release);
+    // END
     cur_window_instr_count.store(0, std::memory_order_release);
     dr_mutex_unlock(mutex);
 }

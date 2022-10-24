@@ -116,6 +116,7 @@ analyzer_multi_t::analyzer_multi_t()
             }
         }
         tracedir = raw2trace_directory_t::tracedir_from_rawdir(op_indir.get_value());
+        printf("op_indir: %s, tracedir: %s\n", op_indir.get_value().c_str(), tracedir.c_str());
         if (!init_file_reader(tracedir, op_verbose.get_value()))
             success_ = false;
     } else if (op_infile.get_value().empty()) {
