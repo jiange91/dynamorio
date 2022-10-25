@@ -61,6 +61,9 @@ analyzer_t::analyzer_t()
     , tools_(NULL)
     , parallel_(true)
     , worker_count_(0)
+    // ADD 
+    , need_sync(false)
+    // END
 {
     /* Nothing else: child class needs to initialize. */
 }
@@ -133,7 +136,6 @@ analyzer_t::init_file_reader(const std::string &trace_path, int verbosity)
     }
     if (parallel_ && directory_iterator_t::is_directory(trace_path)) {
         // ADDED
-        printf("trace_path: %s\n", trace_path.c_str());
         std::vector<std::string> windirs;
         if (trace_path.rfind("window") != std::string::npos || 
             !directory_iterator_t::is_directory(trace_path + std::string(DIRSEP) + "window.0000")) {
@@ -172,15 +174,19 @@ analyzer_t::init_file_reader(const std::string &trace_path, int verbosity)
                 const std::string fname = *iter;
                 if (fname == "." || fname == "..")
                     continue;
-                const std::string path = windir + DIRSEP + fname;
-                printf("open: %s\n", path.c_str());
-                std::unique_ptr<reader_t> reader = get_reader(path, verbosity);
+                // ADDED
+                if (fname == "analysis.out")
+                    continue;
+                // END
+                const std::string file_path = windir + DIRSEP + fname;
+                printf("open: %s\n", file_path.c_str());
+                std::unique_ptr<reader_t> reader = get_reader(file_path, verbosity);
                 if (!reader) {
                     return false;
                 }
                 thread_data_.push_back(analyzer_shard_data_t(
-                    static_cast<int>(thread_data_.size()), std::move(reader), path));
-                VPRINT(this, 2, "Opened reader for %s\n", path.c_str());
+                    static_cast<int>(thread_data_.size()), std::move(reader), file_path, windir));
+                VPRINT(this, 2, "Opened reader for %s\n", file_path.c_str());
             }
         }
         
@@ -226,7 +232,7 @@ analyzer_t::init_file_reader(const std::string &trace_path, int verbosity)
         // ADDED
         std::string path = trace_path + std::string(DIRSEP) + "window.0000";
         path = directory_iterator_t::is_directory(path) ? path : trace_path;
-        printf("open2: %s\n", path.c_str());
+        // printf("open2: %s\n", path.c_str());
         // END
         serial_trace_iter_ = get_reader(/* trace_path */ path, verbosity);
         if (!serial_trace_iter_) {
@@ -265,6 +271,11 @@ analyzer_t::analyzer_t(const std::string &trace_path, analysis_tool_t **tools,
     }
     if (!init_file_reader(trace_path))
         success_ = false;
+    // ADDED
+    if (need_sync) {
+        create_sync_worker();
+    }
+    // END
 }
 
 analyzer_t::analyzer_t(const std::string &trace_path)
@@ -277,11 +288,21 @@ analyzer_t::analyzer_t(const std::string &trace_path)
 {
     if (!init_file_reader(trace_path))
         success_ = false;
+    // ADDED
+    if (need_sync) {
+        create_sync_worker();
+    }
+    // END
 }
 
 analyzer_t::~analyzer_t()
 {
     // Empty.
+    // ADDED
+    if (need_sync) {
+        destory_sync_worker();
+    }
+    // END
 }
 
 // Work around clang-format bug: no newline after return type for single-char operator.
@@ -311,9 +332,17 @@ analyzer_t::start_reading()
 }
 
 void
-analyzer_t::process_tasks(std::vector<analyzer_shard_data_t *> *tasks)
+analyzer_t::process_tasks(/*ADDED*/ uint32_t worker_id, /*END*/ std::vector<analyzer_shard_data_t *> *tasks)
 {
+    // printf("worker_id: %d\n", worker_id);
+
     if (tasks->empty()) {
+        // ADDED
+        if (need_sync) {
+            finished[worker_id] = true;
+            ++ finished_workers;
+        }
+        // END
         VPRINT(this, 1, "Worker has no tasks\n");
         return;
     }
@@ -330,8 +359,15 @@ analyzer_t::process_tasks(std::vector<analyzer_shard_data_t *> *tasks)
             return;
         }
         std::vector<void *> shard_data(num_tools_);
-        for (int i = 0; i < num_tools_; ++i)
-            shard_data[i] = tools_[i]->parallel_shard_init(tdata->index, worker_data[i]);
+        for (int i = 0; i < num_tools_; ++i) {
+            // ADDED
+            if (tools_[i]->analyzer_name == "address_space") {
+                shard_data[i] = tools_[i]->parallel_shard_init(tdata->index, tdata->trace_path, worker_data[i]);
+            }
+            else 
+            // END
+                shard_data[i] = tools_[i]->parallel_shard_init(tdata->index, worker_data[i]);
+        }
         VPRINT(this, 1, "shard_data[0] is %p\n", shard_data[0]);
         for (; *tdata->iter != *trace_end_; ++(*tdata->iter)) {
             for (int i = 0; i < num_tools_; ++i) {
@@ -355,6 +391,12 @@ analyzer_t::process_tasks(std::vector<analyzer_shard_data_t *> *tasks)
                 return;
             }
         }
+
+        if (need_sync) {
+            task_finished(worker_id);
+            // printf("task_finished\n");
+            // TODO;
+        }
     }
     for (int i = 0; i < num_tools_; ++i) {
         const std::string error = tools_[i]->parallel_worker_exit(worker_data[i]);
@@ -365,11 +407,62 @@ analyzer_t::process_tasks(std::vector<analyzer_shard_data_t *> *tasks)
             return;
         }
     }
+
+    // ADDED
+    if (need_sync) {
+        finished[worker_id] = true;
+        ++ finished_workers;
+        printf("finished_workers: %d\n", finished_workers);
+    }
+    // END
 }
+
+// ADDED
+
+void 
+analyzer_t::create_sync_worker() {
+    finished_workers = 0;
+    finished = new bool[worker_count_];
+    sem = new sem_t[worker_count_];
+    printf("sem_init: %d\n", worker_count_);
+    for (int i = 0; i < worker_count_; ++i) {
+        finished[i] = false;
+        sem_init(&sem[i], 0, 0);
+    }
+
+    sync_worker = std::move(std::thread([this] {
+        while (true) {
+            for (int i = 0; i < worker_count_; ++i) {
+                while (sem_trywait(&sem[i]) != 0 && !finished[i]);
+                printf("Loop %d ends\n", i);
+            }
+            for (int i = 0; i < num_tools_; ++i) {
+                tools_[i]->do_synchronization();
+            }
+            if (finished_workers == worker_count_)
+                break;
+        }
+    }));
+}
+
+void 
+analyzer_t::destory_sync_worker() {
+    sync_worker.join();
+    printf("delete sem\n");
+    delete[] sem;
+}
+
+void 
+analyzer_t::task_finished(uint32_t worker_id) {
+    // TODO
+    sem_post(&sem[worker_id]);
+}
+// END
 
 bool
 analyzer_t::run()
 {
+    printf("worker_count_: %d\n", worker_count_);
     // XXX i#3286: Add a %-completed progress message by looking at the file sizes.
     if (!parallel_) {
         if (!start_reading())
@@ -396,7 +489,7 @@ analyzer_t::run()
     threads.reserve(worker_count_);
     for (int i = 0; i < worker_count_; ++i) {
         threads.emplace_back(
-            std::thread(&analyzer_t::process_tasks, this, &worker_tasks_[i]));
+            std::thread(&analyzer_t::process_tasks, this,  /*ADDED*/ i, /*END*/ &worker_tasks_[i]));
     }
     for (std::thread &thread : threads)
         thread.join();

@@ -9,7 +9,4 @@
 build
 
 test/
-drmemtrace.linpack.952148.4877.dir/
-drmemtrace.linpack_1000.997013.3329.dir/
-drmemtrace.sample.1005644.3465.dir/
-drmemtrace.sample.961584.7505.dir/
+drmemtrace.*

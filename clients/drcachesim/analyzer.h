@@ -50,6 +50,11 @@
 #include "analysis_tool.h"
 #include "reader.h"
 
+// ADDED
+#include <thread>
+#include <semaphore.h>
+// END
+
 /**
  * An analyzer is the top-level driver of a set of trace analysis tools.
  * It supports two different modes of operation: either it iterates over the
@@ -113,11 +118,14 @@ protected:
     // analyzed by a single worker thread, eliminating the need for locks.
     struct analyzer_shard_data_t {
         analyzer_shard_data_t(int index, std::unique_ptr<reader_t> iter,
-                              const std::string &trace_file)
+                              const std::string &trace_file, const std::string &trace_path_)
             : index(index)
             , worker(0)
             , iter(std::move(iter))
             , trace_file(trace_file)
+            // ADD
+            , trace_path(trace_path_)
+            // END
         {
         }
         analyzer_shard_data_t(analyzer_shard_data_t &&src)
@@ -126,6 +134,9 @@ protected:
             worker = src.worker;
             iter = std::move(src.iter);
             trace_file = std::move(src.trace_file);
+            // ADD
+            trace_path = std::move(src.trace_path);
+            // END
             error = std::move(src.error);
         }
 
@@ -133,6 +144,9 @@ protected:
         int worker;
         std::unique_ptr<reader_t> iter;
         std::string trace_file;
+        // ADDED
+        std::string trace_path;
+        // END
         std::string error;
 
     private:
@@ -150,7 +164,7 @@ protected:
     start_reading();
 
     void
-    process_tasks(std::vector<analyzer_shard_data_t *> *tasks);
+    process_tasks(uint32_t worker_id, std::vector<analyzer_shard_data_t *> *tasks);
 
     bool success_;
     std::string error_string_;
@@ -164,6 +178,20 @@ protected:
     std::vector<std::vector<analyzer_shard_data_t *>> worker_tasks_;
     int verbosity_ = 0;
     const char *output_prefix_ = "[analyzer]";
+
+    // ADDED
+    bool need_sync;
+    int finished_workers;
+    bool* finished;
+    sem_t* sem;
+    std::thread sync_worker;
+
+    void create_sync_worker();
+
+    void destory_sync_worker();
+
+    void task_finished(uint32_t worker_id);
+    // END
 };
 
 #endif /* _ANALYZER_H_ */

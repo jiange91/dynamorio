@@ -302,7 +302,11 @@ raw2trace_directory_t::tracedir_from_rawdir(const std::string &rawdir_in)
     if (rawdir.size() > trace_sub.size() &&
         rawdir.compare(rawdir.size() - trace_sub.size(), trace_sub.size(), trace_sub) ==
             0)
-        return window_subdir_if_present(rawdir);
+        // ADDED
+        return rawdir;
+        // return window_subdir_if_present(rawdir);
+        // END
+
     // If it ends in "/raw" or a window subdir, replace with "/trace".
     if ((rawdir.size() > raw_sub.size() &&
          rawdir.compare(rawdir.size() - raw_sub.size(), raw_sub.size(), raw_sub) == 0) ||

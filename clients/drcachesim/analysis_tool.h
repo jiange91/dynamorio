@@ -90,7 +90,7 @@ public:
      * error message.
      */
     analysis_tool_t()
-        : success_(true) {};
+        : analyzer_name("") , success_(true) {};
     virtual ~analysis_tool_t() {}; /**< Destructor. */
     /**
      * Tools are encouraged to perform any initialization that might fail here rather
@@ -182,6 +182,15 @@ public:
     {
         return nullptr;
     }
+
+    // ADDED
+    virtual void *
+    parallel_shard_init(int shard_index, std::string trace_path, void *worker_data)
+    {
+        return nullptr;
+    }
+    // END
+    
     /**
      * Invoked once when all trace entries for a shard have been processed.  \p
      * shard_data is the value returned by parallel_shard_init() for this shard.
@@ -217,6 +226,16 @@ public:
     {
         return "";
     }
+
+    // ADDED
+    virtual void 
+    do_synchronization() 
+    {
+
+    }
+    
+    std::string analyzer_name;
+    // END
 
 protected:
     bool success_;

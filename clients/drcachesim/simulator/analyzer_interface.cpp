@@ -40,6 +40,9 @@
  * should be separated and this should only include
  * cache-simulation-based tools.
  */
+// ADDED
+#include "../tools/address_space_create.h"
+// END
 #include "../tools/histogram_create.h"
 #include "../tools/reuse_distance_create.h"
 #include "../tools/reuse_time_create.h"
@@ -212,7 +215,14 @@ drmemtrace_analysis_tool_create()
                                      op_verbose.get_value());
     } else if (op_simulator_type.get_value() == INVARIANT_CHECKER) {
         return invariant_checker_create(op_offline.get_value(), op_verbose.get_value());
-    } else {
+    } 
+    // ADDED
+    else if (op_simulator_type.get_value() == ADDRESS_SPACE) {
+        address_space_knobs_t knobs;
+        return address_space_t_tool_create(knobs);
+    }
+    // END
+    else {
         ERRMSG("Usage error: unsupported analyzer type. "
                "Please choose " CPU_CACHE ", " MISS_ANALYZER ", " TLB ", " HISTOGRAM
                ", " REUSE_DIST ", " BASIC_COUNTS ", " OPCODE_MIX ", " VIEW

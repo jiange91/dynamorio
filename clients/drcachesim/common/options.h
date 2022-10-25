@@ -56,6 +56,9 @@
 #define CACHE_TYPE_DATA "data"
 #define CACHE_TYPE_UNIFIED "unified"
 #define CACHE_PARENT_MEMORY "memory"
+// ADDED
+#define ADDRESS_SPACE "address_space"
+// END
 
 #include <string>
 #include "droption.h"
@@ -143,6 +146,9 @@ extern droption_t<unsigned int> op_miss_count_threshold;
 extern droption_t<double> op_miss_frac_threshold;
 extern droption_t<double> op_confidence_threshold;
 extern droption_t<bool> op_enable_drstatecmp;
+// ADDED
+extern droption_t<bool> op_analyzer_sync;
+// END
 #ifdef BUILD_PT_TRACER
 extern droption_t<bool> op_enable_kernel_tracing;
 #endif

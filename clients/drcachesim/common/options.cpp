@@ -410,11 +410,11 @@ droption_t<std::string>
 
 droption_t<std::string>
     op_simulator_type(DROPTION_SCOPE_FRONTEND, "simulator_type", CPU_CACHE,
-                      "Simulator type (" CPU_CACHE ", " MISS_ANALYZER ", " TLB
+                      "Simulator type (" ADDRESS_SPACE ", " CPU_CACHE ", " MISS_ANALYZER ", " TLB
                       ", " REUSE_DIST ", " REUSE_TIME ", " HISTOGRAM ", " VIEW
                       ", " FUNC_VIEW ", " BASIC_COUNTS ", or " INVARIANT_CHECKER ").",
                       "Specifies the type of the simulator. "
-                      "Supported types: " CPU_CACHE ", " MISS_ANALYZER ", " TLB
+                      "Supported types: " ADDRESS_SPACE ", " CPU_CACHE ", " MISS_ANALYZER ", " TLB
                       ", " REUSE_DIST ", " REUSE_TIME ", " HISTOGRAM ", " BASIC_COUNTS
                       ", or " INVARIANT_CHECKER ".");
 
@@ -668,6 +668,14 @@ droption_t<bool> op_enable_drstatecmp(
     DROPTION_SCOPE_CLIENT, "enable_drstatecmp", false, "Enable the drstatecmp library.",
     "When true, this option enables the drstatecmp library that performs state "
     "comparisons to detect instrumentation-induced bugs due to state clobbering.");
+
+// ADDED
+droption_t<bool> op_analyzer_sync (
+    DROPTION_SCOPE_FRONTEND, "enable_anyalyzer_sync", false, 
+    "Enable synchronization for analyzers.", 
+    "Added for our need."
+);
+// END
 
 #ifdef BUILD_PT_TRACER
 droption_t<bool> op_enable_kernel_tracing(

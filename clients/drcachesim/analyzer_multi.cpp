@@ -116,7 +116,6 @@ analyzer_multi_t::analyzer_multi_t()
             }
         }
         tracedir = raw2trace_directory_t::tracedir_from_rawdir(op_indir.get_value());
-        printf("op_indir: %s, tracedir: %s\n", op_indir.get_value().c_str(), tracedir.c_str());
         if (!init_file_reader(tracedir, op_verbose.get_value()))
             success_ = false;
     } else if (op_infile.get_value().empty()) {
@@ -140,6 +139,13 @@ analyzer_multi_t::analyzer_multi_t()
         if (!init_file_reader(op_infile.get_value(), op_verbose.get_value()))
             success_ = false;
     }
+
+    // ADDED
+    if (need_sync) {
+        create_sync_worker();
+    }
+    // END
+
     // We can't call serial_trace_iter_->init() here as it blocks for ipc_reader_t.
 }
 
@@ -155,8 +161,17 @@ analyzer_multi_t::create_analysis_tools()
     /* FIXME i#2006: create a single top-level tool for multi-component
      * tools.
      */
+    // ADDED
+    if (op_analyzer_sync.get_value()) {
+        printf("op_analyzer_sync: %d\n", op_analyzer_sync.get_value());
+        need_sync = true;
+    }
+    // END
     tools_ = new analysis_tool_t *[max_num_tools_];
     tools_[0] = drmemtrace_analysis_tool_create();
+    // ADDED
+    tools_[0]->analyzer_name = op_simulator_type.get_value();
+    // END
     if (tools_[0] == NULL)
         return false;
     std::string tool_error;
