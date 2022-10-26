@@ -185,7 +185,7 @@ public:
 
     // ADDED
     virtual void *
-    parallel_shard_init(int shard_index, std::string trace_path, void *worker_data)
+    parallel_shard_init(uint32_t tid, uint32_t win_id, std::string trace_path, void *worker_data)
     {
         return nullptr;
     }

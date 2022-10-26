@@ -68,7 +68,7 @@ public:
     void *
     parallel_shard_init(int shard_index, void *worker_data) override;
     void *
-    parallel_shard_init(int shard_index, std::string trace_path, void *worker_data) override;
+    parallel_shard_init(uint32_t tid, uint32_t win_id, std::string trace_path, void *worker_data) override;
     bool
     parallel_shard_exit(void *shard_data) override;
     bool
@@ -88,7 +88,8 @@ protected:
     // the shards we're given.  This is for simplicity and to give the user a method
     // for computing over different units if for some reason that was desired.
     struct shard_data_t {
-        shard_data_t(uint32_t window_id_, const std::string& trace_path_) {
+        shard_data_t(uint32_t tid_, uint32_t window_id_, const std::string& trace_path_) {
+            tid = tid_;
             window_id = window_id_;
             trace_path = trace_path_;
             error = "";
@@ -101,18 +102,25 @@ protected:
         uint32_t window_id;
     };
 
+    std::map<addr_t, uint32_t> total_map;
+
     void
     print_shard_results(const shard_data_t *shard);
+
+    void
+    print_total_results(uint32_t tid, const std::string& trace_path);
 
     const address_space_knobs_t knobs_;
     const size_t line_size_bits_;
     static const std::string TOOL_NAME;
 
     // In parallel operation the keys are "shard indices": just ints.
-    std::map<memref_tid_t, shard_data_t *> shard_map_;
+    std::map<std::pair<uint32_t, uint32_t>, shard_data_t *> shard_map_;
     // This mutex is only needed in parallel_shard_init.  In all other accesses to
     // shard_map (process_memref, print_results) we are single-threaded.
     std::mutex shard_map_mutex_;
+    uint32_t max_window;
+    std::vector<uint32_t> tid_lst;
 };
 
 

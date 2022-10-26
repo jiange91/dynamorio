@@ -765,7 +765,7 @@ raw2trace_t::do_conversion()
         // The files can be converted concurrently.
         std::vector<std::thread> threads;
         VPRINT(1, "Creating %d worker threads\n", worker_count_);
-        // printf("worker_count_: %d\n", worker_count_);
+        printf("raw2trace worker_count_: %d\n", worker_count_);
         threads.reserve(worker_count_);
         for (int i = 0; i < worker_count_; ++i) {
             threads.push_back(
@@ -1380,8 +1380,10 @@ raw2trace_t::raw2trace_t(const char *module_map,
     // queue but it is much simpler.
     if (worker_count_ < 0) {
         worker_count_ = std::thread::hardware_concurrency();
-        if (worker_count_ > kDefaultJobMax)
-            worker_count_ = kDefaultJobMax;
+        // DELETED
+        // if (worker_count_ > kDefaultJobMax)
+        //     worker_count_ = kDefaultJobMax;
+        // END
     }
     int cache_count = worker_count_;
     if (worker_count_ > 0) {

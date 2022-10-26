@@ -162,7 +162,8 @@ analyzer_t::init_file_reader(const std::string &trace_path, int verbosity)
             // DR_ASSERT(windir_present == true);
         }
 
-        for (std::string windir : windirs) {
+        for (size_t i = 0; i < windirs.size(); ++i) {
+            std::string windir = windirs[i];
             directory_iterator_t end;
             directory_iterator_t iter(windir);
             if (!iter) {
@@ -175,9 +176,14 @@ analyzer_t::init_file_reader(const std::string &trace_path, int verbosity)
                 if (fname == "." || fname == "..")
                     continue;
                 // ADDED
-                if (fname == "analysis.out")
+                if (fname.find("analysis") != std::string::npos)
                     continue;
                 // END
+
+                int tid, tmp;
+                sscanf(fname.c_str(), "drmemtrace.nyc.%d.%d.trace.gz", &tid, &tmp); // TODO
+                // std::cout << "tid: "<< tid << ' ' << i << std::endl; 
+
                 const std::string file_path = windir + DIRSEP + fname;
                 printf("open: %s\n", file_path.c_str());
                 std::unique_ptr<reader_t> reader = get_reader(file_path, verbosity);
@@ -185,7 +191,7 @@ analyzer_t::init_file_reader(const std::string &trace_path, int verbosity)
                     return false;
                 }
                 thread_data_.push_back(analyzer_shard_data_t(
-                    static_cast<int>(thread_data_.size()), std::move(reader), file_path, windir));
+                    static_cast<int>(thread_data_.size()), std::move(reader), file_path, windir, tid, i));
                 VPRINT(this, 2, "Opened reader for %s\n", file_path.c_str());
             }
         }
@@ -334,7 +340,7 @@ analyzer_t::start_reading()
 void
 analyzer_t::process_tasks(/*ADDED*/ uint32_t worker_id, /*END*/ std::vector<analyzer_shard_data_t *> *tasks)
 {
-    // printf("worker_id: %d\n", worker_id);
+    printf("worker_id: %d\n", worker_id);
 
     if (tasks->empty()) {
         // ADDED
@@ -362,7 +368,7 @@ analyzer_t::process_tasks(/*ADDED*/ uint32_t worker_id, /*END*/ std::vector<anal
         for (int i = 0; i < num_tools_; ++i) {
             // ADDED
             if (tools_[i]->analyzer_name == "address_space") {
-                shard_data[i] = tools_[i]->parallel_shard_init(tdata->index, tdata->trace_path, worker_data[i]);
+                shard_data[i] = tools_[i]->parallel_shard_init(tdata->tid, tdata->win_id, tdata->trace_path, worker_data[i]);
             }
             else 
             // END
@@ -487,6 +493,7 @@ analyzer_t::run()
     std::vector<std::thread> threads;
     VPRINT(this, 1, "Creating %d worker threads\n", worker_count_);
     threads.reserve(worker_count_);
+    printf("analyzer worker_count_: %d\n", worker_count_);
     for (int i = 0; i < worker_count_; ++i) {
         threads.emplace_back(
             std::thread(&analyzer_t::process_tasks, this,  /*ADDED*/ i, /*END*/ &worker_tasks_[i]));

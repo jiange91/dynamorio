@@ -51,6 +51,7 @@
 #include "reader.h"
 
 // ADDED
+#include <iostream>
 #include <thread>
 #include <semaphore.h>
 // END
@@ -118,13 +119,16 @@ protected:
     // analyzed by a single worker thread, eliminating the need for locks.
     struct analyzer_shard_data_t {
         analyzer_shard_data_t(int index, std::unique_ptr<reader_t> iter,
-                              const std::string &trace_file, const std::string &trace_path_)
+                              const std::string &trace_file, const std::string &trace_path_, 
+                              int tid_, int win_id_)
             : index(index)
             , worker(0)
             , iter(std::move(iter))
             , trace_file(trace_file)
             // ADD
             , trace_path(trace_path_)
+            , tid(tid_)
+            , win_id(win_id_)
             // END
         {
         }
@@ -136,6 +140,8 @@ protected:
             trace_file = std::move(src.trace_file);
             // ADD
             trace_path = std::move(src.trace_path);
+            tid = src.tid;
+            win_id = src.win_id;
             // END
             error = std::move(src.error);
         }
@@ -146,6 +152,7 @@ protected:
         std::string trace_file;
         // ADDED
         std::string trace_path;
+        int tid, win_id;
         // END
         std::string error;
 
