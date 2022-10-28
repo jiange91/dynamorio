@@ -71,11 +71,19 @@
 #include "drutil.h"
 #include "drx.h"
 #include "utils.h"
+#include "drcallstack.h"
+#include "dr_ir_opnd.h"
 
 enum {
     REF_TYPE_READ = 0,
     REF_TYPE_WRITE = 1,
 };
+
+enum {
+    REF_STACK = 0,
+    REF_NSTACK,
+};
+
 /* Each mem_ref_t is a <type, size, addr> entry representing a memory reference
  * instruction or the reference information, e.g.:
  * - mem ref instr: { type = 42 (call), size = 5, addr = 0x7f59c2d002d3 }
@@ -98,10 +106,12 @@ typedef struct _mem_ref_t {
 /* thread private log file and counter */
 typedef struct {
     byte *seg_base;
+    ptr_uint_t stack_base;
     mem_ref_t *buf_base;
     file_t log;
     FILE *logf;
     uint64 num_refs;
+    bool stack_inspected;
 } per_thread_t;
 
 static client_id_t client_id;
@@ -159,6 +169,14 @@ clean_call(void)
     void *drcontext = dr_get_current_drcontext();
     memtrace(drcontext);
 }
+
+// static void inspect_bp_value(void) {
+//     dr_mcontext_t mc = { sizeof(mc), DR_MC_INTEGER | DR_MC_CONTROL};
+//     DR_ASSERT(dr_get_mcontext(dr_get_current_drcontext(), &mc));
+//     // uint64 rel = reg_get_value(opnd_get_reg(xbp), &mc);
+
+//     printf("inspecting stack pointer = " PIFX "\n",  mc.xsp);
+// }
 
 static void
 insert_load_buf_ptr(void *drcontext, instrlist_t *ilist, instr_t *where, reg_id_t reg_ptr)
@@ -218,7 +236,6 @@ insert_save_size(void *drcontext, instrlist_t *ilist, instr_t *where, reg_id_t b
                                       OPND_CREATE_MEM16(base, offsetof(mem_ref_t, size)),
                                       opnd_create_reg(scratch)));
 }
-
 
 static void
 insert_save_addr(void *drcontext, instrlist_t *ilist, instr_t *where, opnd_t ref,
@@ -289,17 +306,25 @@ event_app_instruction(void *drcontext, void *tag, instrlist_t *bb, instr_t *wher
                       bool for_trace, bool translating, void *user_data)
 {
     int i;
-
+    per_thread_t *data = drmgr_get_tls_field(drcontext, tls_idx);
+    if (!data->stack_inspected) {
+        dr_mcontext_t mc = {sizeof(mc), DR_MC_INTEGER | DR_MC_CONTROL};
+        DR_ASSERT(dr_get_mcontext(drcontext, &mc));
+        printf("inspecting stack pointer = " PIFX "\n",  mc.xsp); 
+        data->stack_base = mc.xsp;
+        data->stack_inspected = true;
+    }
     /* Insert code to add an entry for each app instruction. */
     /* Use the drmgr_orig_app_instr_* interface to properly handle our own use
      * of drutil_expand_rep_string() and drx_expand_scatter_gather() (as well
      * as another client/library emulating the instruction stream).
      */
     instr_t *instr_fetch = drmgr_orig_app_instr_for_fetch(drcontext);
-    if (instr_fetch != NULL &&
-        !(instr_reads_memory(instr_fetch) || instr_writes_memory(instr_fetch))) {
-        DR_ASSERT(instr_is_app(instr_fetch));
-        instrument_inc_before(drcontext, bb, where);
+    if (instr_fetch != NULL) {
+        if(!(instr_reads_memory(instr_fetch) || instr_writes_memory(instr_fetch))) {
+            DR_ASSERT(instr_is_app(instr_fetch));
+            instrument_inc_before(drcontext, bb, where);
+        } 
     }
     /* Insert code to add an entry for each memory reference opnd. */
 
@@ -372,6 +397,7 @@ event_thread_init(void *drcontext)
     BUF_PTR(data->seg_base) = data->buf_base;
 
     data->num_refs = 0;
+    data->stack_inspected = false;
 
     if (log_to_stderr) {
         data->logf = stderr;
@@ -398,6 +424,7 @@ event_thread_exit(void *drcontext)
     per_thread_t *data;
     memtrace(drcontext); /* dump any remaining buffer entries */
     data = drmgr_get_tls_field(drcontext, tls_idx);
+    fprintf(data->logf, "" PIFX "\n", (ptr_uint_t)data->stack_base);
     dr_mutex_lock(mutex);
     num_refs += data->num_refs;
     dr_mutex_unlock(mutex);

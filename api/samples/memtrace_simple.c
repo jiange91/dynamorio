@@ -101,6 +101,7 @@ typedef struct {
     file_t log;
     FILE *logf;
     uint64 num_refs;
+    bool stack_inspected;
 } per_thread_t;
 
 static client_id_t client_id;
@@ -293,7 +294,13 @@ event_app_instruction(void *drcontext, void *tag, instrlist_t *bb, instr_t *wher
                       bool for_trace, bool translating, void *user_data)
 {
     int i;
-
+    per_thread_t *data = drmgr_get_tls_field(drcontext, tls_idx);
+    if (!data->stack_inspected) {
+        dr_mcontext_t mc = {sizeof(mc), DR_MC_INTEGER | DR_MC_CONTROL};
+        DR_ASSERT(dr_get_mcontext(drcontext, &mc));
+        printf("inspecting stack pointer = " PIFX "\n",  mc.xsp); 
+        data->stack_inspected = true;
+    }
     /* Insert code to add an entry for each app instruction. */
     /* Use the drmgr_orig_app_instr_* interface to properly handle our own use
      * of drutil_expand_rep_string() and drx_expand_scatter_gather() (as well
@@ -375,7 +382,7 @@ event_thread_init(void *drcontext)
     BUF_PTR(data->seg_base) = data->buf_base;
 
     data->num_refs = 0;
-
+    data->stack_inspected = false;
     if (log_to_stderr) {
         data->logf = stderr;
     } else {
