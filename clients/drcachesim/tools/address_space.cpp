@@ -47,7 +47,6 @@ address_space_t_tool_create(const address_space_knobs_t &knobs)
 address_space_t::address_space_t(const address_space_knobs_t &knobs)
     : knobs_(knobs)
     , line_size_bits_(compute_log2((int)knobs_.line_size))
-    , max_window(0)
 {
 
 }
@@ -82,8 +81,13 @@ address_space_t::parallel_shard_init(uint32_t tid, uint32_t win_id, std::string 
     shard_data_t *shard = new shard_data_t(tid, win_id, trace_path);
     if (std::find(tid_lst.begin(), tid_lst.end(), tid) == tid_lst.end()) {
         tid_lst.push_back(tid);
+        std::vector<uint32_t> win_vec;
+        win_vec.push_back(win_id);
+        win_lst.insert(std::pair<uint32_t, std::vector<uint32_t>>(tid, win_vec)); 
     }
-    max_window = std::max(max_window, win_id);
+    else {
+        win_lst[tid].push_back(win_id);
+    }
     std::lock_guard<std::mutex> guard(shard_map_mutex_);
     shard_map_[std::make_pair(tid, win_id)] = shard;
     return reinterpret_cast<void *>(shard);
@@ -187,10 +191,10 @@ bool
 address_space_t::print_results()
 {
     for (uint32_t tid : tid_lst) {
-        printf("tid: %d, max_window: %d\n", tid, max_window);
+        printf("tid: %d, #wins: %ld\n", tid, win_lst[tid].size());
         total_map.clear();
 
-        for (uint32_t win = 0; win <= max_window; ++win) {
+        for (uint32_t win : win_lst[tid]) {
             print_shard_results(shard_map_[std::make_pair(tid, win)]);
         }
 

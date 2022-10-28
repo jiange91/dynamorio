@@ -97,6 +97,7 @@ analyzer_multi_t::analyzer_multi_t()
                     needs_processing = true;
             }
         }
+        printf("needs_processing: %d\n", needs_processing);
         if (needs_processing) {
             raw2trace_directory_t dir(op_verbose.get_value());
             std::string dir_err = dir.initialize(op_indir.get_value(), "");

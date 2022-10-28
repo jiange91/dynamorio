@@ -93,6 +93,7 @@ protected:
             window_id = window_id_;
             trace_path = trace_path_;
             error = "";
+            total_refs = 0;
         }
         std::map<addr_t, uint32_t> ref_map;
         std::string error;
@@ -119,8 +120,8 @@ protected:
     // This mutex is only needed in parallel_shard_init.  In all other accesses to
     // shard_map (process_memref, print_results) we are single-threaded.
     std::mutex shard_map_mutex_;
-    uint32_t max_window;
     std::vector<uint32_t> tid_lst;
+    std::map<uint32_t, std::vector<uint32_t>> win_lst;
 };
 
 
