@@ -48,7 +48,7 @@ address_space_t::address_space_t(const address_space_knobs_t &knobs)
     : knobs_(knobs)
     , line_size_bits_(compute_log2((int)knobs_.line_size))
 {
-
+    std::cout << "line_size: " << knobs_.line_size << ' ' << line_size_bits_ << std::endl;
 }
 
 address_space_t::~address_space_t()
@@ -78,6 +78,7 @@ address_space_t::parallel_shard_init(int shard_index, void *worker_data)
 void*
 address_space_t::parallel_shard_init(uint32_t tid, uint32_t win_id, std::string trace_path, void *worker_data)
 {
+    printf("init: %d %d\n", tid, win_id);
     shard_data_t *shard = new shard_data_t(tid, win_id, trace_path);
     if (std::find(tid_lst.begin(), tid_lst.end(), tid) == tid_lst.end()) {
         tid_lst.push_back(tid);
@@ -123,10 +124,17 @@ address_space_t::parallel_shard_memref(void *shard_data, const memref_t &memref)
     //     return true;
     // }
 
-    if (// type_is_instr(memref.instr.type) || type_is_prefetch(memref.data.type)
+    if (memref.data.type == TRACE_TYPE_INSTR) {
+        ++shard->num_non_branches;
+    }
+    else if (memref.data.type >= TRACE_TYPE_INSTR_DIRECT_JUMP && 
+        memref.data.type <= TRACE_TYPE_INSTR_RETURN) {
+            ++shard->num_branches;
+        }
+    else if (// type_is_instr(memref.instr.type) || type_is_prefetch(memref.data.type)
         memref.data.type == TRACE_TYPE_READ || memref.data.type == TRACE_TYPE_WRITE) 
     {
-        ++shard->total_refs;
+        ++shard->num_refs;
         addr_t key = memref.data.addr >> line_size_bits_;
         std::map<addr_t, uint32_t>::iterator it = shard->ref_map.find(key);
         if (it == shard->ref_map.end()) {
@@ -149,7 +157,8 @@ address_space_t::process_memref(const memref_t &memref)
 void
 address_space_t::print_shard_results(const shard_data_t *shard)
 {
-    printf("Total memory accesses for thread %d window %d: %ld\n", shard->tid, shard->window_id, shard->total_refs);
+    printf("Summary for thread %d window %d: %ld memrefs, %ld branch instrs, %ld instrs\n", 
+        shard->tid, shard->window_id, shard->num_refs, shard->num_branches, shard->num_branches + shard->num_non_branches);
     
     std::ofstream out_file;
     out_file.open(shard->trace_path + DIRSEP + "analysis." + std::to_string(shard->tid) + ".out");
@@ -167,7 +176,7 @@ address_space_t::print_shard_results(const shard_data_t *shard)
     }
     out_file.close();
     // printf("Result for window %d\n", shard->window_id);   
-    // printf("Total accesses: %ld\n", shard->total_refs);
+    // printf("Total accesses: %ld\n", shard->num_refs);
     // for (auto it = shard->ref_map.begin(); it != shard->ref_map.end(); ++it) {
     //     printf("%p %d\n", (void*) it->first, it->second);
     // }
@@ -206,6 +215,21 @@ address_space_t::print_results()
             trace_path.replace(found, win_subdir.length(), "");
             print_total_results(tid, trace_path);
         }
+
+        std::ofstream summary_file;
+        summary_file.open(trace_path + DIRSEP + "instr_summary." + std::to_string(tid) + ".out");
+        summary_file << "win_id,memrefs,instrs,branches" << std::endl;
+        std::sort(win_lst[tid].begin(), win_lst[tid].end());
+        uint64_t total_refs = 0, total_instrs = 0,  total_branches = 0;
+        for (uint32_t win : win_lst[tid]) {
+            shard_data_t* shard = shard_map_[std::make_pair(tid, win)];
+            summary_file << win << "," << shard->num_refs << "," << shard->num_non_branches + shard->num_branches << "," << shard->num_branches << std::endl;
+            total_refs += shard->num_refs;
+            total_instrs += shard->num_non_branches + shard->num_branches;
+            total_branches += shard->num_branches;
+        }
+        summary_file << "all" << "," << total_refs << "," << total_instrs << "," << total_branches << std::endl;
+        summary_file.close();
     }
     
     return true;

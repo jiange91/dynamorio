@@ -93,12 +93,16 @@ protected:
             window_id = window_id_;
             trace_path = trace_path_;
             error = "";
-            total_refs = 0;
+            num_refs = 0;
+            num_branches = 0;
+            num_non_branches = 0;
         }
         std::map<addr_t, uint32_t> ref_map;
         std::string error;
         std::string trace_path;
-        uint64_t total_refs = 0;
+        uint64_t num_refs;
+        uint64_t num_branches;
+        uint64_t num_non_branches;
         uint32_t tid;
         uint32_t window_id;
     };

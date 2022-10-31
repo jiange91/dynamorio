@@ -181,8 +181,8 @@ analyzer_t::init_file_reader(const std::string &trace_path, int verbosity)
                 // END
 
                 int tid, tmp;
-                sscanf(fname.c_str(), "drmemtrace.nyc.%d.%d.trace.gz", &tid, &tmp); // TODO
-                // std::cout << "tid: "<< tid << ' ' << i << std::endl; 
+                sscanf(fname.c_str(), "drmemtrace.%*[0-9A-Za-z_].%d.%d.trace.gz", &tid, &tmp); // TODO
+                std::cout << "tid: "<< tid << ' ' << i << std::endl; 
 
                 const std::string file_path = windir + DIRSEP + fname;
                 printf("open: %s\n", file_path.c_str());
@@ -278,9 +278,9 @@ analyzer_t::analyzer_t(const std::string &trace_path, analysis_tool_t **tools,
     if (!init_file_reader(trace_path))
         success_ = false;
     // ADDED
-    if (need_sync) {
-        create_sync_worker();
-    }
+    // if (need_sync) {
+    //     create_sync_worker();
+    // }
     // END
 }
 
@@ -295,9 +295,9 @@ analyzer_t::analyzer_t(const std::string &trace_path)
     if (!init_file_reader(trace_path))
         success_ = false;
     // ADDED
-    if (need_sync) {
-        create_sync_worker();
-    }
+    // if (need_sync) {
+    //     create_sync_worker();
+    // }
     // END
 }
 
@@ -344,10 +344,10 @@ analyzer_t::process_tasks(/*ADDED*/ uint32_t worker_id, /*END*/ std::vector<anal
 
     if (tasks->empty()) {
         // ADDED
-        if (need_sync) {
-            finished[worker_id] = true;
-            ++ finished_workers;
-        }
+        // if (need_sync) {
+        //     finished[worker_id] = true;
+        //     ++ finished_workers;
+        // }
         // END
         VPRINT(this, 1, "Worker has no tasks\n");
         return;
@@ -398,11 +398,11 @@ analyzer_t::process_tasks(/*ADDED*/ uint32_t worker_id, /*END*/ std::vector<anal
             }
         }
 
-        if (need_sync) {
-            task_finished(worker_id);
-            // printf("task_finished\n");
-            // TODO;
-        }
+        // if (need_sync) {
+        //     task_finished(worker_id);
+        //     // printf("task_finished\n");
+        //     // TODO;
+        // }
     }
     for (int i = 0; i < num_tools_; ++i) {
         const std::string error = tools_[i]->parallel_worker_exit(worker_data[i]);
@@ -415,11 +415,11 @@ analyzer_t::process_tasks(/*ADDED*/ uint32_t worker_id, /*END*/ std::vector<anal
     }
 
     // ADDED
-    if (need_sync) {
-        finished[worker_id] = true;
-        ++ finished_workers;
-        printf("finished_workers: %d\n", finished_workers);
-    }
+    // if (need_sync) {
+    //     finished[worker_id] = true;
+    //     ++ finished_workers;
+    //     printf("finished_workers: %d\n", finished_workers);
+    // }
     // END
 }
 
@@ -430,7 +430,7 @@ analyzer_t::create_sync_worker() {
     finished_workers = 0;
     finished = new bool[worker_count_];
     sem = new sem_t[worker_count_];
-    printf("sem_init: %d\n", worker_count_);
+    // printf("sem_init: %d\n", worker_count_);
     for (int i = 0; i < worker_count_; ++i) {
         finished[i] = false;
         sem_init(&sem[i], 0, 0);

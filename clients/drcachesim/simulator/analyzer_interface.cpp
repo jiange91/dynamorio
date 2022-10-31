@@ -219,6 +219,7 @@ drmemtrace_analysis_tool_create()
     // ADDED
     else if (op_simulator_type.get_value() == ADDRESS_SPACE) {
         address_space_knobs_t knobs;
+        knobs.line_size = op_line_size.get_value();
         return address_space_t_tool_create(knobs);
     }
     // END

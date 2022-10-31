@@ -369,8 +369,7 @@ raw2trace_directory_t::initialize(const std::string &indir, const std::string &o
             return "Window subdir missing slash";
         modfile_dir.erase(pos);
     }
-    printf("modfile_dir: %s\n", modfile_dir.c_str());
-
+    
     // Support a default outdir_.
     if (outdir_.empty()) {
         outdir_ = tracedir_from_rawdir(indir_);
@@ -380,13 +379,12 @@ raw2trace_directory_t::initialize(const std::string &indir, const std::string &o
             }
         }
     }
-    printf("indir_: %s, outdir_: %s\n", indir_.c_str(), outdir_.c_str());
+    // printf("indir_: %s, outdir_: %s\n", indir_.c_str(), outdir_.c_str());
     std::string modfilename =
         modfile_dir + std::string(DIRSEP) + DRMEMTRACE_MODULE_LIST_FILENAME;
     std::string err = read_module_file(modfilename);
     if (!err.empty())
         return err;
-    printf("modfilename: %s\n", modfilename.c_str());
     
     std::string encoding_filename =
         modfile_dir + std::string(DIRSEP) + DRMEMTRACE_ENCODING_FILENAME;
@@ -401,7 +399,7 @@ raw2trace_directory_t::initialize(const std::string &indir, const std::string &o
     }
     
     // ADDED
-    printf("indir: %s\n", indir_.c_str());
+    // printf("indir: %s\n", indir_.c_str());
     if (window_subdir_if_present(indir_) == indir_) {
         // if windir exists and indir_ contains windir 
         // Or if windir doesn't exsit at all.

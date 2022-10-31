@@ -663,6 +663,21 @@ if (BUILD_TESTS)
     use_DynamoRIO_static_client(tool.drcacheoff.burst_static drmemtrace_static)
     add_win32_flags(tool.drcacheoff.burst_static)
 
+    # add_executable(subset tests/subset.cpp)
+    # configure_DynamoRIO_static(subset)
+    # use_DynamoRIO_static_client(subset drmemtrace_static)
+    # add_win32_flags(subset)
+
+    add_executable(subset_test ${PROJECT_SOURCE_DIR}/benchmark/subset.cpp)
+    configure_DynamoRIO_static(subset_test)
+    use_DynamoRIO_static_client(subset_test drmemtrace_static)
+    add_win32_flags(subset_test)
+
+    add_executable(subset_bench_nyc ${PROJECT_SOURCE_DIR}/benchmark/nyc_bench/subset_bench_nyc.c)
+    configure_DynamoRIO_static(subset_bench_nyc)
+    use_DynamoRIO_static_client(subset_bench_nyc drmemtrace)
+    add_win32_flags(subset_bench_nyc)
+    
     add_executable(tool.drcacheoff.burst_replace tests/burst_replace.cpp)
     configure_DynamoRIO_static(tool.drcacheoff.burst_replace)
     use_DynamoRIO_static_client(tool.drcacheoff.burst_replace drmemtrace_static)
