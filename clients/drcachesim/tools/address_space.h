@@ -93,6 +93,7 @@ protected:
             window_id = window_id_;
             trace_path = trace_path_;
             error = "";
+            mem_locs = 0;
             num_refs = 0;
             num_branches = 0;
             num_non_branches = 0;
@@ -100,6 +101,7 @@ protected:
         std::map<addr_t, uint32_t> ref_map;
         std::string error;
         std::string trace_path;
+        uint64_t mem_locs;
         uint64_t num_refs;
         uint64_t num_branches;
         uint64_t num_non_branches;

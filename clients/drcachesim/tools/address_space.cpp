@@ -157,8 +157,8 @@ address_space_t::process_memref(const memref_t &memref)
 void
 address_space_t::print_shard_results(const shard_data_t *shard)
 {
-    printf("Summary for thread %d window %d: %ld memrefs, %ld branch instrs, %ld instrs\n", 
-        shard->tid, shard->window_id, shard->num_refs, shard->num_branches, shard->num_branches + shard->num_non_branches);
+    printf("Summary for thread %d window %d: %ld mem_locs, %ld mem_refs, %ld branch instrs, %ld instrs\n", 
+        shard->tid, shard->window_id, shard->ref_map.size(), shard->num_refs, shard->num_branches, shard->num_branches + shard->num_non_branches);
     
     std::ofstream out_file;
     out_file.open(shard->trace_path + DIRSEP + "analysis." + std::to_string(shard->tid) + ".out");
@@ -200,16 +200,17 @@ bool
 address_space_t::print_results()
 {
     for (uint32_t tid : tid_lst) {
-        printf("tid: %d, #wins: %ld\n", tid, win_lst[tid].size());
         total_map.clear();
-
+        
+        std::sort(win_lst[tid].begin(), win_lst[tid].end());
+        
         for (uint32_t win : win_lst[tid]) {
             print_shard_results(shard_map_[std::make_pair(tid, win)]);
         }
 
         shard_data_t *shard = shard_map_[std::make_pair(tid, 0)];
         std::string trace_path = shard->trace_path;
-        std::string win_subdir = "/window.0000";
+        std::string win_subdir = "/trace/window.0000";
         std::size_t found = trace_path.rfind(win_subdir);
         if (found != std::string::npos) {
             trace_path.replace(found, win_subdir.length(), "");
@@ -218,17 +219,16 @@ address_space_t::print_results()
 
         std::ofstream summary_file;
         summary_file.open(trace_path + DIRSEP + "instr_summary." + std::to_string(tid) + ".out");
-        summary_file << "win_id,memrefs,instrs,branches" << std::endl;
-        std::sort(win_lst[tid].begin(), win_lst[tid].end());
+        summary_file << "win_id,mem_locs,mem_refs,instrs,branches" << std::endl;
         uint64_t total_refs = 0, total_instrs = 0,  total_branches = 0;
         for (uint32_t win : win_lst[tid]) {
             shard_data_t* shard = shard_map_[std::make_pair(tid, win)];
-            summary_file << win << "," << shard->num_refs << "," << shard->num_non_branches + shard->num_branches << "," << shard->num_branches << std::endl;
+            summary_file << win << "," << shard->ref_map.size() << "," << shard->num_refs << "," << shard->num_non_branches + shard->num_branches << "," << shard->num_branches << std::endl;
             total_refs += shard->num_refs;
             total_instrs += shard->num_non_branches + shard->num_branches;
             total_branches += shard->num_branches;
         }
-        summary_file << "all" << "," << total_refs << "," << total_instrs << "," << total_branches << std::endl;
+        summary_file << "all" << "," << total_map.size() << "," << total_refs << "," << total_instrs << "," << total_branches << std::endl;
         summary_file.close();
     }
     

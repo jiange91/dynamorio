@@ -182,7 +182,7 @@ analyzer_t::init_file_reader(const std::string &trace_path, int verbosity)
 
                 int tid, tmp;
                 sscanf(fname.c_str(), "drmemtrace.%*[0-9A-Za-z_].%d.%d.trace.gz", &tid, &tmp); // TODO
-                std::cout << "tid: "<< tid << ' ' << i << std::endl; 
+                // std::cout << "tid: "<< tid << ' ' << i << std::endl; 
 
                 const std::string file_path = windir + DIRSEP + fname;
                 printf("open: %s\n", file_path.c_str());

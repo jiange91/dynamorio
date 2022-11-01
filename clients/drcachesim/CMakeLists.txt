@@ -675,8 +675,13 @@ if (BUILD_TESTS)
 
     add_executable(subset_bench_nyc ${PROJECT_SOURCE_DIR}/benchmark/nyc_bench/subset_bench_nyc.c)
     configure_DynamoRIO_static(subset_bench_nyc)
-    use_DynamoRIO_static_client(subset_bench_nyc drmemtrace)
+    use_DynamoRIO_static_client(subset_bench_nyc drmemtrace_static)
     add_win32_flags(subset_bench_nyc)
+    
+    add_executable(multi_files_bench_nyc ${PROJECT_SOURCE_DIR}/benchmark/nyc_bench/multi_files_bench_nyc.c)
+    configure_DynamoRIO_static(multi_files_bench_nyc)
+    use_DynamoRIO_static_client(multi_files_bench_nyc drmemtrace_static)
+    add_win32_flags(multi_files_bench_nyc)
     
     add_executable(tool.drcacheoff.burst_replace tests/burst_replace.cpp)
     configure_DynamoRIO_static(tool.drcacheoff.burst_replace)
