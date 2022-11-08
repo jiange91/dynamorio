@@ -1267,6 +1267,7 @@ private:
             // XXX i#1729: make bundles via lazy accum until hit memref/end, if
             // we don't need encodings.
             buf->type = instr->type();
+            
             if (buf->type == TRACE_TYPE_INSTR_MAYBE_FETCH) {
                 // We want it to look like the original rep string, with just one instr
                 // fetch for the whole loop, instead of the drutil-expanded loop.
@@ -1630,6 +1631,7 @@ private:
             impl()->add_to_statistic(tls, RAW2TRACE_STAT_COUNT_ELIDED, 1);
         }
         if (!have_addr) {
+            // printf("entry_mem\n");
             if (memref.use_remembered_base)
                 return "Non-elided base mislabeled to use remembered base";
             in_entry = impl()->get_next_entry(tls);
@@ -1703,6 +1705,7 @@ private:
             // We stored only the base reg, as an optimization.
             buf->addr += opnd_get_disp(memref.opnd);
         }
+        // printf("mem: %lx\n", (ptr_uint_t)buf->addr);
         impl()->log(4, "Appended memref type %d size %d to " PFX "\n", buf->type,
                     buf->size, (ptr_uint_t)buf->addr);
 

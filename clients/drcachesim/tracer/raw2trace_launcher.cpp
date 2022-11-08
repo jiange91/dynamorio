@@ -108,7 +108,6 @@ _tmain(int argc, const TCHAR *targv[])
     std::string dir_err = dir.initialize(op_indir.get_value(), op_outdir.get_value());
     if (!dir_err.empty())
         FATAL_ERROR("Directory parsing failed: %s", dir_err.c_str());
-    printf("dir.in_files_: %ld\n", dir.in_files_.size());
     raw2trace_t raw2trace(
         dir.modfile_bytes_, dir.in_files_, dir.out_files_, dir.out_archives_,
         dir.encoding_file_, nullptr, op_verbose.get_value(), op_jobs.get_value(),

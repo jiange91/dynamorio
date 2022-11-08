@@ -97,8 +97,12 @@ protected:
             num_refs = 0;
             num_branches = 0;
             num_non_branches = 0;
+            memref_after_ts = false;
         }
+
         std::map<addr_t, uint32_t> ref_map;
+        std::vector<std::pair<addr_t, addr_t>> ts_vec;
+        bool memref_after_ts;
         std::string error;
         std::string trace_path;
         uint64_t mem_locs;
@@ -109,10 +113,13 @@ protected:
         uint32_t window_id;
     };
 
-    std::map<addr_t, uint32_t> total_map;
+    std::map<uint32_t, std::map<addr_t, uint32_t>*> tid_map;
 
     void
     print_shard_results(const shard_data_t *shard);
+
+    void 
+    print_shard_timestamps(const shard_data_t *shard);
 
     void
     print_total_results(uint32_t tid, const std::string& trace_path);

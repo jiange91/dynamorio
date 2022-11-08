@@ -394,6 +394,7 @@ offline_instru_t::append_thread_header(byte *buf_ptr, thread_id_t tid)
 int
 offline_instru_t::append_unit_header(byte *buf_ptr, thread_id_t tid, ptr_int_t window)
 {
+    // printf("append_unit_header\n");
     byte *new_buf = buf_ptr;
     offline_entry_t *entry = (offline_entry_t *)new_buf;
     entry->timestamp.type = OFFLINE_TYPE_TIMESTAMP;

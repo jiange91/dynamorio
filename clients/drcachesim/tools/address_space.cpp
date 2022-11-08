@@ -48,11 +48,15 @@ address_space_t::address_space_t(const address_space_knobs_t &knobs)
     : knobs_(knobs)
     , line_size_bits_(compute_log2((int)knobs_.line_size))
 {
-    std::cout << "line_size: " << knobs_.line_size << ' ' << line_size_bits_ << std::endl;
+
 }
 
 address_space_t::~address_space_t()
 {
+    for (auto &mp : tid_map) {
+        delete mp.second;
+    }
+    
     for (auto &shard : shard_map_) {
         delete shard.second;
     }
@@ -78,10 +82,10 @@ address_space_t::parallel_shard_init(int shard_index, void *worker_data)
 void*
 address_space_t::parallel_shard_init(uint32_t tid, uint32_t win_id, std::string trace_path, void *worker_data)
 {
-    printf("init: %d %d\n", tid, win_id);
     shard_data_t *shard = new shard_data_t(tid, win_id, trace_path);
     if (std::find(tid_lst.begin(), tid_lst.end(), tid) == tid_lst.end()) {
         tid_lst.push_back(tid);
+        tid_map[tid] = new std::map<addr_t, uint32_t>();
         std::vector<uint32_t> win_vec;
         win_vec.push_back(win_id);
         win_lst.insert(std::pair<uint32_t, std::vector<uint32_t>>(tid, win_vec)); 
@@ -97,6 +101,12 @@ address_space_t::parallel_shard_init(uint32_t tid, uint32_t win_id, std::string 
 bool
 address_space_t::parallel_shard_exit(void *shard_data)
 {
+    shard_data_t *shard = reinterpret_cast<shard_data_t *>(shard_data);
+    print_shard_results(shard);
+    print_shard_timestamps(shard);
+    shard->mem_locs = shard->ref_map.size();
+    shard->ref_map.clear();
+    shard->ts_vec.clear();
     // Nothing (we read the shard data in print_results).
     return true;
 }
@@ -124,7 +134,13 @@ address_space_t::parallel_shard_memref(void *shard_data, const memref_t &memref)
     //     return true;
     // }
 
-    if (memref.data.type == TRACE_TYPE_INSTR) {
+    if (memref.marker.type == TRACE_TYPE_MARKER) {
+        if (memref.marker.marker_type == TRACE_MARKER_TYPE_TIMESTAMP) {
+            shard->ts_vec.push_back(std::make_pair(memref.marker.marker_value, 0));
+            shard->memref_after_ts = true;
+        }
+    }
+    else if (memref.data.type == TRACE_TYPE_INSTR) {
         ++shard->num_non_branches;
     }
     else if (memref.data.type >= TRACE_TYPE_INSTR_DIRECT_JUMP && 
@@ -134,6 +150,11 @@ address_space_t::parallel_shard_memref(void *shard_data, const memref_t &memref)
     else if (// type_is_instr(memref.instr.type) || type_is_prefetch(memref.data.type)
         memref.data.type == TRACE_TYPE_READ || memref.data.type == TRACE_TYPE_WRITE) 
     {
+        if (shard->memref_after_ts) {
+            assert(shard->ts_vec.size() > 0);
+            shard->ts_vec[(int) shard->ts_vec.size() - 1].second = memref.data.addr >> line_size_bits_;
+            shard->memref_after_ts = false;
+        }
         ++shard->num_refs;
         addr_t key = memref.data.addr >> line_size_bits_;
         std::map<addr_t, uint32_t>::iterator it = shard->ref_map.find(key);
@@ -160,6 +181,9 @@ address_space_t::print_shard_results(const shard_data_t *shard)
     printf("Summary for thread %d window %d: %ld mem_locs, %ld mem_refs, %ld branch instrs, %ld instrs\n", 
         shard->tid, shard->window_id, shard->ref_map.size(), shard->num_refs, shard->num_branches, shard->num_branches + shard->num_non_branches);
     
+    assert(tid_map.find(shard->tid) != tid_map.end());
+    auto total_map = tid_map[shard->tid];
+
     std::ofstream out_file;
     out_file.open(shard->trace_path + DIRSEP + "analysis." + std::to_string(shard->tid) + ".out");
     out_file << "addr,refs" << std::endl;
@@ -167,11 +191,11 @@ address_space_t::print_shard_results(const shard_data_t *shard)
         addr_t addr = it->first; 
         uint32_t refs = it->second;
         out_file << std::hex << addr << ',' << std::dec << refs << std::endl;
-        if (total_map.find(addr) == total_map.end()) {
-            total_map.insert(std::pair<addr_t, uint32_t>(addr, refs));
+        if (total_map->find(addr) == total_map->end()) {
+            total_map->insert(std::pair<addr_t, uint32_t>(addr, refs));
         }
         else {
-            total_map[addr] += refs;
+            (*total_map)[addr] += refs;
         }
     }
     out_file.close();
@@ -183,12 +207,29 @@ address_space_t::print_shard_results(const shard_data_t *shard)
     // printf("\n");
 }
 
+void 
+address_space_t::print_shard_timestamps(const shard_data_t *shard) {
+    printf("#Timestamps for thread %d window %d: %ld\n", 
+        shard->tid, shard->window_id, shard->ts_vec.size());
+    
+    std::ofstream out_file;
+    out_file.open(shard->trace_path + DIRSEP + "timestamp." + std::to_string(shard->tid) + ".out");
+    out_file << "timestamp,addr" << std::endl;
+    for (std::pair<addr_t, addr_t> p : shard->ts_vec) {
+        out_file << std::dec << (uint64_t) p.first << ',' << std::hex << p.second << std::endl;
+    }
+    out_file.close();
+}
+
 void
 address_space_t::print_total_results(uint32_t tid, const std::string& trace_path) {
+    assert(tid_map.find(tid) != tid_map.end());
+    auto total_map = tid_map[tid];
+
     std::ofstream out_file;
     out_file.open(trace_path + DIRSEP + "total_analysis." + std::to_string(tid) + ".out");
     out_file << "addr,refs" << std::endl;
-    for (auto it = total_map.begin(); it != total_map.end(); ++it) {
+    for (auto it = total_map->begin(); it != total_map->end(); ++it) {
         addr_t addr = it->first; 
         uint32_t refs = it->second;
         out_file << std::hex << addr << ',' << std::dec << refs << std::endl;
@@ -200,13 +241,14 @@ bool
 address_space_t::print_results()
 {
     for (uint32_t tid : tid_lst) {
-        total_map.clear();
-        
+         assert(tid_map.find(tid) != tid_map.end());
+        auto total_map = tid_map[tid];
+
         std::sort(win_lst[tid].begin(), win_lst[tid].end());
         
-        for (uint32_t win : win_lst[tid]) {
-            print_shard_results(shard_map_[std::make_pair(tid, win)]);
-        }
+        // for (uint32_t win : win_lst[tid]) {
+        //     print_shard_results(shard_map_[std::make_pair(tid, win)]);
+        // }
 
         shard_data_t *shard = shard_map_[std::make_pair(tid, 0)];
         std::string trace_path = shard->trace_path;
@@ -223,12 +265,12 @@ address_space_t::print_results()
         uint64_t total_refs = 0, total_instrs = 0,  total_branches = 0;
         for (uint32_t win : win_lst[tid]) {
             shard_data_t* shard = shard_map_[std::make_pair(tid, win)];
-            summary_file << win << "," << shard->ref_map.size() << "," << shard->num_refs << "," << shard->num_non_branches + shard->num_branches << "," << shard->num_branches << std::endl;
+            summary_file << win << "," << shard->mem_locs << "," << shard->num_refs << "," << shard->num_non_branches + shard->num_branches << "," << shard->num_branches << std::endl;
             total_refs += shard->num_refs;
             total_instrs += shard->num_non_branches + shard->num_branches;
             total_branches += shard->num_branches;
         }
-        summary_file << "all" << "," << total_map.size() << "," << total_refs << "," << total_instrs << "," << total_branches << std::endl;
+        summary_file << "all" << "," << total_map->size() << "," << total_refs << "," << total_instrs << "," << total_branches << std::endl;
         summary_file.close();
     }
     

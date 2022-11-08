@@ -176,16 +176,16 @@ analyzer_t::init_file_reader(const std::string &trace_path, int verbosity)
                 if (fname == "." || fname == "..")
                     continue;
                 // ADDED
-                if (fname.find("analysis") != std::string::npos)
+                if (fname.find("analysis") != std::string::npos 
+                   || fname.find("timestamp") != std::string::npos
+                   || fname.find("instr_summary") != std::string::npos)
                     continue;
                 // END
 
                 int tid, tmp;
                 sscanf(fname.c_str(), "drmemtrace.%*[0-9A-Za-z_].%d.%d.trace.gz", &tid, &tmp); // TODO
-                // std::cout << "tid: "<< tid << ' ' << i << std::endl; 
-
+                
                 const std::string file_path = windir + DIRSEP + fname;
-                printf("open: %s\n", file_path.c_str());
                 std::unique_ptr<reader_t> reader = get_reader(file_path, verbosity);
                 if (!reader) {
                     return false;
@@ -340,8 +340,6 @@ analyzer_t::start_reading()
 void
 analyzer_t::process_tasks(/*ADDED*/ uint32_t worker_id, /*END*/ std::vector<analyzer_shard_data_t *> *tasks)
 {
-    printf("worker_id: %d\n", worker_id);
-
     if (tasks->empty()) {
         // ADDED
         // if (need_sync) {
@@ -430,7 +428,6 @@ analyzer_t::create_sync_worker() {
     finished_workers = 0;
     finished = new bool[worker_count_];
     sem = new sem_t[worker_count_];
-    // printf("sem_init: %d\n", worker_count_);
     for (int i = 0; i < worker_count_; ++i) {
         finished[i] = false;
         sem_init(&sem[i], 0, 0);
@@ -468,7 +465,6 @@ analyzer_t::task_finished(uint32_t worker_id) {
 bool
 analyzer_t::run()
 {
-    printf("worker_count_: %d\n", worker_count_);
     // XXX i#3286: Add a %-completed progress message by looking at the file sizes.
     if (!parallel_) {
         if (!start_reading())
@@ -493,7 +489,6 @@ analyzer_t::run()
     std::vector<std::thread> threads;
     VPRINT(this, 1, "Creating %d worker threads\n", worker_count_);
     threads.reserve(worker_count_);
-    printf("analyzer worker_count_: %d\n", worker_count_);
     for (int i = 0; i < worker_count_; ++i) {
         threads.emplace_back(
             std::thread(&analyzer_t::process_tasks, this,  /*ADDED*/ i, /*END*/ &worker_tasks_[i]));

@@ -621,7 +621,6 @@ raw2trace_t::process_next_thread_buffer(raw2trace_thread_data_t *tdata,
         // and encoding_file_ == INVALID_FILE since we have several tests with
         // that setup.  We do complain during processing about unknown instructions.
         if (tdata->saw_header) {
-            // printf("saw_header\n");
             tdata->error = process_header(tdata);
             if (!tdata->error.empty())
                 return tdata->error;
@@ -642,6 +641,7 @@ raw2trace_t::process_next_thread_buffer(raw2trace_thread_data_t *tdata,
                 trace_metadata_writer_t::write_timestamp(buf_base,
                                                          (uintptr_t)entry.timestamp.usec);
             tdata->last_timestamp_ = entry.timestamp.usec;
+            // printf("TIMESTAMP: %ld\n", tdata->last_timestamp_);
             CHECK((uint)(buf - buf_base) < WRITE_BUFFER_SIZE, "Too many entries");
             if (!tdata->out_file->write((char *)buf_base, buf - buf_base)) {
                 tdata->error = "Failed to write to output file";
@@ -765,7 +765,6 @@ raw2trace_t::do_conversion()
         // The files can be converted concurrently.
         std::vector<std::thread> threads;
         VPRINT(1, "Creating %d worker threads\n", worker_count_);
-        printf("raw2trace worker_count_: %d\n", worker_count_);
         threads.reserve(worker_count_);
         for (int i = 0; i < worker_count_; ++i) {
             threads.push_back(
@@ -1040,6 +1039,7 @@ raw2trace_t::get_next_entry(void *tls)
            static_cast<int>(tdata->last_entry.addr.type),
            // Cast to long to avoid Mac warning on "long long" using "long" format.
            static_cast<uint64>(tdata->last_entry.combined_value));
+    // printf("entry: %d\n", static_cast<int>(tdata->last_entry.addr.type));
     return &tdata->last_entry;
 }
 

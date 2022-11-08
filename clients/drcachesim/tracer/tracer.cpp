@@ -176,6 +176,7 @@ static char encoding_path[MAXIMUM_PATH];
 static void
 clean_call(void)
 {
+    // printf("clean_call\n");
     void *drcontext = dr_get_current_drcontext();
     process_and_output_buffer(drcontext, false);
 }
@@ -584,6 +585,7 @@ static void
 instrument_clean_call(void *drcontext, instrlist_t *ilist, instr_t *where,
                       reg_id_t reg_ptr)
 {
+    // printf("instrument_clean_call\n");
     instr_t *skip_call = INSTR_CREATE_label(drcontext);
     bool short_reaches = true;
 #ifdef X86
@@ -1155,6 +1157,12 @@ event_app_instruction(void *drcontext, void *tag, instrlist_t *bb, instr_t *inst
      * We restore the registers after the clean call, which should be ok
      * assuming the clean call does not need the two register values.
      */
+    // if (instru_t::instr_to_instr_type(instr_fetch, ud->repstr) == TRACE_TYPE_INSTR_DIRECT_JUMP) {
+    //     printf("jump: %d\n", is_last_instr(drcontext, instr));
+    // }
+    // if (instru_t::instr_to_instr_type(instr_fetch, ud->repstr) == TRACE_TYPE_INSTR_DIRECT_CALL) {
+    //     printf("call: %d\n", is_last_instr(drcontext, instr));
+    // }
     if (is_last_instr(drcontext, instr)) {
         if (op_L0I_filter.get_value() || op_L0D_filter.get_value())
             insert_load_buf_ptr(drcontext, bb, where, reg_ptr);
