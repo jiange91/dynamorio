@@ -114,6 +114,7 @@ analyzer_multi_t::analyzer_multi_t()
                 success_ = false;
                 error_string_ = "raw2trace failed: " + error;
             }
+            printf("raw2trace conversion ends\n");
         }
         tracedir = raw2trace_directory_t::tracedir_from_rawdir(op_indir.get_value());
         if (!init_file_reader(tracedir, op_verbose.get_value()))

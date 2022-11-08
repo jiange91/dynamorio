@@ -226,6 +226,7 @@ analyzer_t::init_file_reader(const std::string &trace_path, int verbosity)
         if (worker_count_ <= 0)
             worker_count_ = std::thread::hardware_concurrency();
         worker_tasks_.resize(worker_count_);
+        printf("analyzer workers: %d\n", worker_count_);
         int worker = 0;
         for (size_t i = 0; i < thread_data_.size(); ++i) {
             VPRINT(this, 2, "Worker %d assigned trace shard %zd\n", worker, i);

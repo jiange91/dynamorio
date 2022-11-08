@@ -753,6 +753,7 @@ raw2trace_t::do_conversion()
         return error;
     if (thread_data_.empty())
         return "No thread files found.";
+    printf("raw2trace workers: %d\n", worker_count_);
     // XXX i#3286: Add a %-completed progress message by looking at the file sizes.
     if (worker_count_ == 0) {
         for (size_t i = 0; i < thread_data_.size(); ++i) {
