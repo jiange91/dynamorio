@@ -86,6 +86,7 @@ address_space_t::parallel_shard_init(uint32_t tid, uint32_t win_id, std::string 
     if (std::find(tid_lst.begin(), tid_lst.end(), tid) == tid_lst.end()) {
         tid_lst.push_back(tid);
         tid_map[tid] = new std::map<addr_t, uint32_t>();
+        // tid_ts_map[tid] = new std::vector<std::pair<addr_t, uint32_t>>();
         std::vector<uint32_t> win_vec;
         win_vec.push_back(win_id);
         win_lst.insert(std::pair<uint32_t, std::vector<uint32_t>>(tid, win_vec)); 
@@ -106,7 +107,6 @@ address_space_t::parallel_shard_exit(void *shard_data)
     print_shard_timestamps(shard);
     shard->mem_locs = shard->ref_map.size();
     shard->ref_map.clear();
-    shard->ts_vec.clear();
     // Nothing (we read the shard data in print_results).
     return true;
 }
@@ -212,6 +212,9 @@ address_space_t::print_shard_timestamps(const shard_data_t *shard) {
     printf("#Timestamps for thread %d window %d: %ld\n", 
         shard->tid, shard->window_id, shard->ts_vec.size());
     
+    // assert(tid_ts_map.find(shard->tid) != tid_ts_map.end());
+    // tid_ts_map[shard->tid]->push_back(std::make_pair(shard->ts_vec[0].first, shard->window_id));
+
     std::ofstream out_file;
     out_file.open(shard->trace_path + DIRSEP + "timestamp." + std::to_string(shard->tid) + ".out");
     out_file << "timestamp,addr" << std::endl;
@@ -237,6 +240,25 @@ address_space_t::print_total_results(uint32_t tid, const std::string& trace_path
     out_file.close();
 }
 
+void
+address_space_t::print_total_timestamps(uint32_t tid, const std::string& trace_path) {
+    // assert(tid_ts_map.find(tid) != tid_ts_map.end());
+    // auto total_ts_map = tid_ts_map[tid];
+    // sort(total_ts_map->begin(), total_ts_map->end());
+
+    uint64_t start_ts = (uint64_t) shard_map_[std::make_pair(tid, 0)]->ts_vec[0].first;
+    std::ofstream out_file;
+    out_file.open(trace_path + DIRSEP + "total_timestamp." + std::to_string(tid) + ".out");
+    out_file << "timestamp,addr" << std::endl;
+    for (uint32_t win_id : win_lst[tid]) {
+        shard_data_t *shard = shard_map_[std::make_pair(tid, win_id)];
+        for (std::pair<addr_t, addr_t> p : shard->ts_vec) {
+            out_file << std::dec << (uint64_t) p.first - start_ts << ',' << std::hex << p.second << std::endl;
+        }
+    }
+    out_file.close();
+}
+
 bool
 address_space_t::print_results()
 {
@@ -257,6 +279,7 @@ address_space_t::print_results()
         if (found != std::string::npos) {
             trace_path.replace(found, win_subdir.length(), "");
             print_total_results(tid, trace_path);
+            print_total_timestamps(tid, trace_path);
         }
 
         std::ofstream summary_file;

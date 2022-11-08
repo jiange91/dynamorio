@@ -114,6 +114,7 @@ protected:
     };
 
     std::map<uint32_t, std::map<addr_t, uint32_t>*> tid_map;
+    // std::map<uint32_t, std::vector<std::pair<addr_t, uint32_t>>* > tid_ts_map;
 
     void
     print_shard_results(const shard_data_t *shard);
@@ -123,6 +124,9 @@ protected:
 
     void
     print_total_results(uint32_t tid, const std::string& trace_path);
+
+    void
+    print_total_timestamps(uint32_t tid, const std::string& trace_path);
 
     const address_space_knobs_t knobs_;
     const size_t line_size_bits_;
