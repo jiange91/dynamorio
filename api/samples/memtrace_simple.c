@@ -299,6 +299,9 @@ event_app_instruction(void *drcontext, void *tag, instrlist_t *bb, instr_t *wher
      * of drutil_expand_rep_string() and drx_expand_scatter_gather() (as well
      * as another client/library emulating the instruction stream).
      */
+    // if (!drmgr_is_first_instr(drcontext, instr))
+    //     return DR_EMIT_DEFAULT;
+
     instr_t *instr_fetch = drmgr_orig_app_instr_for_fetch(drcontext);
     if (instr_fetch != NULL &&
         (instr_reads_memory(instr_fetch) || instr_writes_memory(instr_fetch))) {

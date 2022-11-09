@@ -113,6 +113,7 @@ _tmain(int argc, const TCHAR *targv[])
         dir.encoding_file_, nullptr, op_verbose.get_value(), op_jobs.get_value(),
         op_alt_module_dir.get_value(), op_chunk_instr_count.get_value());
     std::string error = raw2trace.do_conversion();
+    printf("bb_count: %d\n", raw2trace.bb_count);
     if (!error.empty())
         FATAL_ERROR("Conversion failed: %s", error.c_str());
 

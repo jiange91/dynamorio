@@ -1121,6 +1121,11 @@ event_app_instruction(void *drcontext, void *tag, instrlist_t *bb, instr_t *inst
         ud->last_app_pc = instr_get_app_pc(instr_fetch);
     }
 
+#ifdef ONLY_TRACE_TIMESTAMP
+    if (adjust != 0) {
+        insert_update_buf_ptr(drcontext, bb, where, reg_ptr, DR_PRED_NONE, adjust); i = 0;
+    }
+#else
     /* Data entries. */
     if (instr_operands != NULL &&
         (instr_reads_memory(instr_operands) || instr_writes_memory(instr_operands))) {
@@ -1152,17 +1157,13 @@ event_app_instruction(void *drcontext, void *tag, instrlist_t *bb, instr_t *inst
             insert_update_buf_ptr(drcontext, bb, where, reg_ptr, pred, adjust);
     } else if (adjust != 0)
         insert_update_buf_ptr(drcontext, bb, where, reg_ptr, DR_PRED_NONE, adjust);
+#endif
+
 
     /* Insert code to call clean_call for processing the buffer.
      * We restore the registers after the clean call, which should be ok
      * assuming the clean call does not need the two register values.
      */
-    // if (instru_t::instr_to_instr_type(instr_fetch, ud->repstr) == TRACE_TYPE_INSTR_DIRECT_JUMP) {
-    //     printf("jump: %d\n", is_last_instr(drcontext, instr));
-    // }
-    // if (instru_t::instr_to_instr_type(instr_fetch, ud->repstr) == TRACE_TYPE_INSTR_DIRECT_CALL) {
-    //     printf("call: %d\n", is_last_instr(drcontext, instr));
-    // }
     if (is_last_instr(drcontext, instr)) {
         if (op_L0I_filter.get_value() || op_L0D_filter.get_value())
             insert_load_buf_ptr(drcontext, bb, where, reg_ptr);

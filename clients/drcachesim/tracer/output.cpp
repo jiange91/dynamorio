@@ -1011,8 +1011,19 @@ process_and_output_buffer(void *drcontext, bool skip_size_cap)
         if (op_use_physical.get_value()) {
             skip = process_buffer_for_physaddr(drcontext, data, header_size, buf_ptr);
         }
+    #ifdef ONLY_TRACE_TIMESTAMP 
+        // printf("header: %ld, %ld\n", header_size / sizeof(offline_entry_t), (buf_ptr - (data->buf_base + header_size)) / sizeof(offline_entry_t));
+        DR_ASSERT(op_offline.get_value() && skip == 0);
+        offline_entry_t *entry = (offline_entry_t *) (data->buf_base + header_size);
+        entry->addr.type = OFFLINE_TYPE_MEMREF;
+        entry->addr.addr = (buf_ptr - (data->buf_base + header_size)) / sizeof(offline_entry_t);
+        current_num_refs +=
+            output_buffer(drcontext, data, data->buf_base, data->buf_base + header_size + sizeof(offline_entry_t), header_size);
+    #else
         current_num_refs +=
             output_buffer(drcontext, data, data->buf_base + skip, buf_ptr, header_size);
+    #endif
+
     }
 
     if (file_ops_func.handoff_buf == NULL) {
@@ -1027,6 +1038,7 @@ process_and_output_buffer(void *drcontext, bool skip_size_cap)
         }
     }
 
+    // printf("num_ref: %d\n", current_num_refs);
     // memset(data->buf_base, 0, trace_buf_size);
     // memset(data->buf_base + trace_buf_size, -1, redzone_size); 
 

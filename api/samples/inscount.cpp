@@ -71,10 +71,16 @@ static uint64 global_count;
 /* A simple clean call that will be automatically inlined because it has only
  * one argument and contains no calls to other functions.
  */
+static uint64 bb_count;
 static void
 inscount(uint num_instrs)
 {
     global_count += num_instrs;
+    ++bb_count;
+    printf("bb_count: %ld\n", bb_count);
+    if (bb_count % 10000 == 0) {
+        printf("bb\n");
+    }
 }
 static void
 event_exit(void);

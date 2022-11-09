@@ -769,8 +769,10 @@ public:
     trace_converter_t &
     operator=(trace_converter_t &&) = default;
 #endif
+    uint32_t bb_count;
 
 protected:
+
     /**
      * Construct a new #trace_converter_t object. If a nullptr dcontext is passed,
      * creates a new DR context va dr_standalone_init().
@@ -779,6 +781,7 @@ protected:
         : dcontext_(dcontext == nullptr ? dr_standalone_init() : dcontext)
         , passed_dcontext_(dcontext != nullptr)
     {
+        bb_count = 0;
     }
 
     /**
@@ -872,6 +875,7 @@ protected:
                 return "memref entry found outside of bb";
             }
         } else if (in_entry->pc.type == OFFLINE_TYPE_PC) {
+            // ++bb_count;
             DR_CHECK(reinterpret_cast<trace_entry_t *>(buf) == buf_base,
                      "We shouldn't have buffered anything before calling "
                      "append_bb_entries");
@@ -1234,6 +1238,7 @@ private:
         }
         DR_CHECK(!instrs_are_separate || instr_count == 1,
                  "cannot mix 0-count and >1-count");
+        ++bb_count;
         for (uint i = 0; i < instr_count; ++i) {
             trace_entry_t *buf_start = impl()->get_write_buffer(tls);
             trace_entry_t *buf = buf_start;
