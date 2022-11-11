@@ -30,8 +30,8 @@
  * DAMAGE.
  */
 
-#ifndef _ADDRESS_SPACE_H_
-#define _ADDRESS_SPACE_H_ 1
+#ifndef _TIMESTAMP_H_
+#define _TIMESTAMP_H_ 1
 
 #include <memory>
 #include <mutex>
@@ -42,9 +42,9 @@
 #include <assert.h>
 #include <iostream>
 #include "analysis_tool.h"
-#include "address_space_create.h"
+#include "timestamp_create.h"
 #include "memref.h"
-// #include "tbb/concurrent_unordered_map.h"
+#include "common/lz4_istream.h"
 
 
 // We see noticeable overhead in release build with an if() that directly
@@ -55,10 +55,10 @@
 struct line_ref_t;
 struct line_ref_list_t;
 
-class address_space_t : public analysis_tool_t {
+class timestamp_t : public analysis_tool_t {
 public:
-    address_space_t(const address_space_knobs_t &knobs);
-    ~address_space_t() override;
+    timestamp_t(const timestamp_knobs_t &knobs);
+    ~timestamp_t() override;
     bool
     process_memref(const memref_t &memref) override;
     bool
@@ -75,8 +75,6 @@ public:
     parallel_shard_memref(void *shard_data, const memref_t &memref) override;
     std::string
     parallel_shard_error(void *shard_data) override;
-    void 
-    do_synchronization() override;
     
     // Global value for use in non-member code.
     static unsigned int knob_verbose;
@@ -88,7 +86,9 @@ protected:
     // the shards we're given.  This is for simplicity and to give the user a method
     // for computing over different units if for some reason that was desired.
     struct shard_data_t {
-        shard_data_t(uint32_t tid_, uint32_t window_id_, const std::string& trace_path_) {
+        shard_data_t(uint32_t tid_, uint32_t window_id_, const std::string& trace_path_, 
+            std::vector<std::pair<uint64_t, int64_t>>* ts_vec_0,
+            std::vector<std::pair<uint64_t, int64_t>>* ts_vec_1) {
             tid = tid_;
             window_id = window_id_;
             trace_path = trace_path_;
@@ -98,10 +98,11 @@ protected:
             num_branches = 0;
             num_non_branches = 0;
             memref_after_ts = false;
+            ts_vec[0] = ts_vec_0;
+            ts_vec[1] = ts_vec_1;
         }
 
         std::map<addr_t, uint32_t> ref_map;
-        std::vector<std::pair<addr_t, addr_t>> ts_vec;
         bool memref_after_ts;
         std::string error;
         std::string trace_path;
@@ -111,22 +112,22 @@ protected:
         uint64_t num_non_branches;
         uint32_t tid;
         uint32_t window_id;
+        std::vector<std::pair<uint64_t, int64_t>>* ts_vec[2];
     };
 
-    std::map<uint32_t, std::map<addr_t, uint32_t>*> tid_map;
-    // std::map<uint32_t, std::vector<std::pair<addr_t, uint32_t>>* > tid_ts_map;
+    std::string trace_dir;
+    std::vector<uint64_t> win2bbcount;
+    std::istream* ts_file_[2];
+    std::map<uint32_t, std::vector<std::pair<uint64_t, int64_t>>* > win2tsvec_[2];
 
     void
-    print_shard_results(const shard_data_t *shard);
+    read_timestamp_trace(int idx);
 
-    void 
+    std::string
+    read_bbcount_file();
+
+    void
     print_shard_timestamps(const shard_data_t *shard);
-
-    void
-    print_total_results(uint32_t tid, const std::string& trace_path);
-
-    void
-    print_total_timestamps(uint32_t tid, const std::string& trace_path);
 
     const size_t line_size_bits_;
     static const std::string TOOL_NAME;
@@ -141,4 +142,4 @@ protected:
 };
 
 
-#endif /* _ADDRESS_SPACE_H_ */
+#endif /* _TIMESTAMP_H_ */

@@ -80,6 +80,12 @@ static droption_t<int>
             "disables concurrency and uses  single thread to perform all operations.  A "
             "negative value sets the job count to the number of hardware threads.");
 
+static droption_t<bool> op_only_analyze_main_thread (
+    DROPTION_SCOPE_FRONTEND, "only_analyze_main_thread", false,
+    "Only analyze main thread.",
+    "Added for our need."
+);
+
 #define FATAL_ERROR(msg, ...)                               \
     do {                                                    \
         fprintf(stderr, "ERROR: " msg "\n", ##__VA_ARGS__); \
@@ -105,15 +111,16 @@ _tmain(int argc, const TCHAR *targv[])
     }
 
     raw2trace_directory_t dir(op_verbose.get_value());
+    dir.only_analyze_main_thread = op_only_analyze_main_thread.get_value();
     std::string dir_err = dir.initialize(op_indir.get_value(), op_outdir.get_value());
     if (!dir_err.empty())
         FATAL_ERROR("Directory parsing failed: %s", dir_err.c_str());
     raw2trace_t raw2trace(
         dir.modfile_bytes_, dir.in_files_, dir.out_files_, dir.out_archives_,
         dir.encoding_file_, nullptr, op_verbose.get_value(), op_jobs.get_value(),
-        op_alt_module_dir.get_value(), op_chunk_instr_count.get_value());
+        op_alt_module_dir.get_value(), op_chunk_instr_count.get_value(), 
+        &(dir.tid_wins), dir.trace_outdir);
     std::string error = raw2trace.do_conversion();
-    printf("bb_count: %d\n", raw2trace.bb_count);
     if (!error.empty())
         FATAL_ERROR("Conversion failed: %s", error.c_str());
 

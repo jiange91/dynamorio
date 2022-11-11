@@ -601,8 +601,7 @@ raw2trace_t::process_header(raw2trace_thread_data_t *tdata)
 }
 
 std::string
-raw2trace_t::process_next_thread_buffer(raw2trace_thread_data_t *tdata,
-                                        OUT bool *end_of_record)
+raw2trace_t::process_next_thread_buffer(raw2trace_thread_data_t *tdata, OUT bool *end_of_record)
 {
     // We now convert each offline entry into a trace_entry_t.
     // We fill in instr entries and memref type and size.
@@ -667,8 +666,8 @@ raw2trace_t::process_next_thread_buffer(raw2trace_thread_data_t *tdata,
         if (entry.extended.ext == OFFLINE_EXT_TYPE_MARKER &&
             entry.extended.valueB == TRACE_MARKER_TYPE_WINDOW_ID)
             tdata->last_window = entry.extended.valueA;
-        tdata->error = process_offline_entry(tdata, &entry, tdata->tid, end_of_record,
-                                             &last_bb_handled);
+        tdata->error = process_offline_entry(tdata, &entry, tdata->tid, &(tdata->bb_count), 
+                                            end_of_record, &last_bb_handled);
         if (!tdata->error.empty())
             return tdata->error;
     }
@@ -693,7 +692,7 @@ raw2trace_t::process_thread_file(raw2trace_thread_data_t *tdata)
                 entry.extended.type = OFFLINE_TYPE_EXTENDED;
                 entry.extended.ext = OFFLINE_EXT_TYPE_FOOTER;
                 bool last_bb_handled = true;
-                tdata->error = process_offline_entry(tdata, &entry, tdata->tid,
+                tdata->error = process_offline_entry(tdata, &entry, tdata->tid, &(tdata->bb_count),
                                                      &end_of_file, &last_bb_handled);
                 CHECK(end_of_file, "Synthetic footer failed");
                 if (!tdata->error.empty())
@@ -779,6 +778,32 @@ raw2trace_t::do_conversion()
             count_elided_ += tdata.count_elided;
         }
     }
+
+    for (size_t i = 0; i < thread_data_.size(); ++i) {
+        uint32_t tid = thread_data_[i].tid;
+        uint32_t win_id = thread_data_[i].win_id;
+        uint64_t bb_count = thread_data_[i].bb_count;
+        if (tid_win_bbcount.find(tid) == tid_win_bbcount.end()) {
+            tid_win_bbcount.insert(std::make_pair(tid, std::map<uint32_t, uint64_t>())); 
+        }    
+        tid_win_bbcount[tid].insert(std::make_pair(win_id, bb_count));
+    }
+
+    if (trace_outdir != "") {
+        for (auto it = tid_win_bbcount.begin(); it != tid_win_bbcount.end(); ++it) {
+            auto win_mp = it->second;
+
+            std::ofstream count_file;
+            count_file.open(trace_outdir + DIRSEP + "bb_count.out");
+            count_file << "win_id,bb_count" << std::endl;
+            for (auto it2 = win_mp.begin(); it2 != win_mp.end(); ++it2) {
+                count_file << it2->first << "," << it2->second << std::endl;
+            }
+            count_file.close();
+        }
+    }
+     
+
     VPRINT(1, "Reconstructed " UINT64_FORMAT_STRING " elided addresses.\n",
            count_elided_);
     VPRINT(1, "Successfully converted %zu thread files\n", thread_data_.size());
@@ -1040,7 +1065,6 @@ raw2trace_t::get_next_entry(void *tls)
            static_cast<int>(tdata->last_entry.addr.type),
            // Cast to long to avoid Mac warning on "long long" using "long" format.
            static_cast<uint64>(tdata->last_entry.combined_value));
-    // printf("entry: %d\n", static_cast<int>(tdata->last_entry.addr.type));
     return &tdata->last_entry;
 }
 
@@ -1337,8 +1361,11 @@ raw2trace_t::raw2trace_t(const char *module_map,
                          const std::vector<archive_ostream_t *> &out_archives,
                          file_t encoding_file, void *dcontext, unsigned int verbosity,
                          int worker_count, const std::string &alt_module_dir,
-                         uint64_t chunk_instr_count)
+                         uint64_t chunk_instr_count,
+                         std::vector<std::pair<uint32_t, uint32_t>> *tid_wins, 
+                         std::string trace_outdir_)
     : trace_converter_t(dcontext)
+    , trace_outdir(trace_outdir_)
     , worker_count_(worker_count)
     , user_process_(nullptr)
     , user_process_data_(nullptr)
@@ -1366,6 +1393,10 @@ raw2trace_t::raw2trace_t(const char *module_map,
     for (size_t i = 0; i < thread_data_.size(); ++i) {
         thread_data_[i].index = static_cast<int>(i);
         thread_data_[i].thread_file = thread_files[i];
+        if (tid_wins != nullptr) {
+            thread_data_[i].tid = (*tid_wins)[i].first;
+            thread_data_[i].win_id = (*tid_wins)[i].second;
+        }
         if (out_files.empty()) {
             thread_data_[i].out_archive = out_archives[i];
             // Set out_file too for code that doesn't care which it writes to.

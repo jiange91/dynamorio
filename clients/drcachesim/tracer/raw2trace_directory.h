@@ -45,6 +45,7 @@ public:
     raw2trace_directory_t(unsigned int verbosity = 0)
         : modfile_bytes_(nullptr)
         , encoding_file_(INVALID_FILE)
+        , trace_outdir("")
         , modfile_(INVALID_FILE)
         , indir_("")
         , outdir_("")
@@ -87,21 +88,25 @@ public:
 
     char *modfile_bytes_;
     file_t encoding_file_;
+    bool only_analyze_main_thread;
     std::vector<std::istream *> in_files_;
     std::vector<std::ostream *> out_files_;
     std::vector<archive_ostream_t *> out_archives_;
+    std::vector<std::pair<uint32_t, uint32_t>> tid_wins;
+    std::string trace_outdir;
 
 private:
     std::string
     read_module_file(const std::string &modfilename);
     std::string
-    open_thread_files();
+    open_thread_files(uint32_t win_id);
     std::string
-    open_thread_log_file(const char *basename);
+    open_thread_log_file(const char *basename, int win_id);
     file_t modfile_;
     std::string indir_;
     std::string outdir_;
     unsigned int verbosity_;
+    uint32_t main_tid;
 };
 
 #endif /* _RAW2TRACE_DIRECTORY_H_ */

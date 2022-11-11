@@ -126,6 +126,7 @@ macro (add_exported_library name type)
   add_dependencies(${name} api_headers)
 endmacro ()
 
+add_exported_library(drmemtrace_timestamp STATIC tools/timestamp.cpp)
 add_exported_library(drmemtrace_address_space STATIC tools/address_space.cpp)
 add_exported_library(drmemtrace_reuse_distance STATIC tools/reuse_distance.cpp)
 add_exported_library(drmemtrace_histogram STATIC tools/histogram.cpp)
@@ -188,11 +189,6 @@ if (liblz4)
   target_link_libraries(drmemtrace_raw2trace lz4)
 endif ()
 
-find_package(TBB REQUIRED)
-if(NOT ${TBB_FOUND}) 
-	message (STATUS "TBB not found!") 
-endif()
-
 set(drcachesim_srcs
   launcher.cpp
   analyzer.cpp
@@ -215,7 +211,8 @@ add_executable(drcachesim ${drcachesim_srcs})
 configure_DynamoRIO_standalone(drcachesim)
 # Link in our tools:
 target_link_libraries(drcachesim drmemtrace_simulator 
-  drmemtrace_address_space tbb
+  drmemtrace_timestamp
+  drmemtrace_address_space
   drmemtrace_reuse_distance
   drmemtrace_histogram drmemtrace_reuse_time drmemtrace_basic_counts
   drmemtrace_opcode_mix drmemtrace_view drmemtrace_func_view
@@ -261,6 +258,7 @@ install_client_nonDR_header(drmemtrace common/memref.h)
 install_client_nonDR_header(drmemtrace reader/reader.h)
 install_client_nonDR_header(drmemtrace analysis_tool.h)
 install_client_nonDR_header(drmemtrace analyzer.h)
+install_client_nonDR_header(drmemtrace tools/timestamp_create.h)
 install_client_nonDR_header(drmemtrace tools/address_space_create.h)
 install_client_nonDR_header(drmemtrace tools/reuse_distance_create.h)
 install_client_nonDR_header(drmemtrace tools/histogram_create.h)
@@ -431,6 +429,7 @@ if (NOT AARCH64 AND NOT APPLE)
   restore_nonclient_flags(opcode_mix_launcher)
 endif ()
 restore_nonclient_flags(drmemtrace_simulator)
+restore_nonclient_flags(drmemtrace_timestamp)
 restore_nonclient_flags(drmemtrace_address_space)
 restore_nonclient_flags(drmemtrace_reuse_distance)
 restore_nonclient_flags(drmemtrace_histogram)
@@ -482,6 +481,7 @@ if (NOT AARCH64 AND NOT APPLE)
   add_win32_flags(opcode_mix_launcher)
 endif ()
 add_win32_flags(drmemtrace_simulator)
+add_win32_flags(drmemtrace_timestamp)
 add_win32_flags(drmemtrace_address_space)
 add_win32_flags(drmemtrace_reuse_distance)
 add_win32_flags(drmemtrace_histogram)

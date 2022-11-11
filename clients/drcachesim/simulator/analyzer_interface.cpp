@@ -42,6 +42,7 @@
  */
 // ADDED
 #include "../tools/address_space_create.h"
+#include "../tools/timestamp_create.h"
 // END
 #include "../tools/histogram_create.h"
 #include "../tools/reuse_distance_create.h"
@@ -136,7 +137,7 @@ get_cache_simulator_knobs()
 }
 
 analysis_tool_t *
-drmemtrace_analysis_tool_create()
+drmemtrace_analysis_tool_create(std::string trace_dir)
 {
     if (op_simulator_type.get_value() == CPU_CACHE) {
         const std::string &config_file = op_config_file.get_value();
@@ -221,6 +222,14 @@ drmemtrace_analysis_tool_create()
         address_space_knobs_t knobs;
         knobs.line_size = op_line_size.get_value();
         return address_space_t_tool_create(knobs);
+    }
+    else if (op_simulator_type.get_value() == TIMESTAMP) {
+        timestamp_knobs_t knobs;
+        knobs.line_size = op_line_size.get_value();
+        knobs.trace_dir = trace_dir;
+        knobs.timestamp_file_0 = op_timestamp_file_0.get_value();
+        knobs.timestamp_file_1 = op_timestamp_file_1.get_value();
+        return timestamp_t_tool_create(knobs);
     }
     // END
     else {

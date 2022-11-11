@@ -552,7 +552,6 @@ write_trace_data(void *drcontext, byte *towrite_start, byte *towrite_end,
 static void
 set_local_window(void *drcontext, ptr_int_t value)
 {
-    // printf("set_win: %ld\n", value);
     per_thread_t *data = (per_thread_t *)drmgr_get_tls_field(drcontext, tls_idx);
     NOTIFY(3, "%s: T%d %zd (old: %zd)\n", __FUNCTION__, dr_get_thread_id(drcontext),
            value, get_local_window(data));
@@ -680,7 +679,6 @@ is_ok_to_split_before(trace_type_t type)
 static size_t
 add_buffer_header(void *drcontext, per_thread_t *data, byte *buf_base)
 {
-    // printf("add_buffer_header\n");
     size_t header_size = 0;
     // For online we already wrote the thread header but for offline it is in
     // the first buffer, so skip over it.
@@ -907,7 +905,6 @@ process_buffer_for_physaddr(void *drcontext, per_thread_t *data, size_t header_s
 void
 process_and_output_buffer(void *drcontext, bool skip_size_cap)
 {
-    // printf("process_and_output_buffer\n");
     per_thread_t *data = (per_thread_t *)drmgr_get_tls_field(drcontext, tls_idx);
     byte *mem_ref, *buf_ptr;
     byte *redzone;
@@ -1011,18 +1008,19 @@ process_and_output_buffer(void *drcontext, bool skip_size_cap)
         if (op_use_physical.get_value()) {
             skip = process_buffer_for_physaddr(drcontext, data, header_size, buf_ptr);
         }
-    #ifdef ONLY_TRACE_TIMESTAMP 
-        // printf("header: %ld, %ld\n", header_size / sizeof(offline_entry_t), (buf_ptr - (data->buf_base + header_size)) / sizeof(offline_entry_t));
-        DR_ASSERT(op_offline.get_value() && skip == 0);
-        offline_entry_t *entry = (offline_entry_t *) (data->buf_base + header_size);
-        entry->addr.type = OFFLINE_TYPE_MEMREF;
-        entry->addr.addr = (buf_ptr - (data->buf_base + header_size)) / sizeof(offline_entry_t);
-        current_num_refs +=
-            output_buffer(drcontext, data, data->buf_base, data->buf_base + header_size + sizeof(offline_entry_t), header_size);
-    #else
-        current_num_refs +=
-            output_buffer(drcontext, data, data->buf_base + skip, buf_ptr, header_size);
-    #endif
+        if (op_only_trace_timestamp.get_value()) {
+            // printf("header: %ld, %ld\n", header_size / sizeof(offline_entry_t), (buf_ptr - (data->buf_base + header_size)) / sizeof(offline_entry_t));
+            DR_ASSERT(op_offline.get_value() && skip == 0);
+            offline_entry_t *entry = (offline_entry_t *) (data->buf_base + header_size);
+            entry->addr.type = OFFLINE_TYPE_MEMREF;
+            entry->addr.addr = (buf_ptr - (data->buf_base + header_size)) / sizeof(offline_entry_t);
+            current_num_refs +=
+                output_buffer(drcontext, data, data->buf_base, data->buf_base + header_size + sizeof(offline_entry_t), header_size);
+        }
+        else {
+            current_num_refs +=
+                output_buffer(drcontext, data, data->buf_base + skip, buf_ptr, header_size);
+        }
 
     }
 

@@ -30,30 +30,35 @@
  * DAMAGE.
  */
 
-/* reuse-distance tool creation */
 
-#ifndef _ADDRESS_SPACE_CAEATE_H_
-#define _ADDRESS_SPACE_CREATE_H_ 1
+#ifndef _TIMESTAMP_CAEATE_H_
+#define _TIMESTAMP_CAEATE_H_ 1
 
 #include "analysis_tool.h"
 
 /**
- * The options for address_space_tool_create().
+ * The options for timestamp_tool_create().
  * The options are currently documented in \ref sec_drcachesim_ops.
  */
 // These options are currently documented in ../common/options.cpp.
-struct address_space_knobs_t {
-    address_space_knobs_t()
-        : line_size(64)
+struct timestamp_knobs_t {
+    timestamp_knobs_t()
+        : trace_dir("")
+        , timestamp_file_0("")
+        , timestamp_file_1("")
+        , line_size(64)
         , verbose(0)
     {
     }
+    std::string trace_dir;
+    std::string timestamp_file_0;
+    std::string timestamp_file_1;
     unsigned int line_size;
     unsigned int verbose;
 };
 
 /** Creates an analysis tool which computes reuse distance. */
 analysis_tool_t *
-address_space_t_tool_create(const address_space_knobs_t &knobs);
+timestamp_t_tool_create(const timestamp_knobs_t &knobs);
 
-#endif /* _ADDRESS_SPACE_CREATE_H_ */
+#endif /* _timestamp_CREATE_H_ */

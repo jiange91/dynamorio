@@ -675,6 +675,31 @@ droption_t<bool> op_analyzer_sync (
     "Enable synchronization for analyzers.", 
     "Added for our need."
 );
+
+droption_t<std::string> op_timestamp_file_0 (
+    DROPTION_SCOPE_FRONTEND, "timestamp_file_0", "", 
+    "Timestamp File.", 
+    "Added for our need."
+);
+
+droption_t<std::string> op_timestamp_file_1 (
+    DROPTION_SCOPE_FRONTEND, "timestamp_file_1", "", 
+    "Timestamp File.", 
+    "Added for our need."
+);
+
+droption_t<bool> op_only_analyze_main_thread (
+    DROPTION_SCOPE_FRONTEND, "only_analyze_main_thread", false,
+    "Only analyze main thread.",
+    "Added for our need."
+);
+
+droption_t<bool> op_only_trace_timestamp (
+    DROPTION_SCOPE_CLIENT, "only_trace_timestamp", false,
+    "Only trace timestamp.",
+    "Added for our need."
+);
+
 // END
 
 #ifdef BUILD_PT_TRACER

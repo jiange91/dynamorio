@@ -130,7 +130,7 @@ typedef struct {
 } user_data_t;
 
 /* For online simulation, we write to a single global pipe */
-named_pipe_t ipc_pipe;
+named_pipe_t ipc_pipe; 
 
 #define MAX_INSTRU_SIZE 256 /* The max instance size of instru_t or its children. */
 instru_t *instru;
@@ -176,7 +176,6 @@ static char encoding_path[MAXIMUM_PATH];
 static void
 clean_call(void)
 {
-    // printf("clean_call\n");
     void *drcontext = dr_get_current_drcontext();
     process_and_output_buffer(drcontext, false);
 }
@@ -585,7 +584,6 @@ static void
 instrument_clean_call(void *drcontext, instrlist_t *ilist, instr_t *where,
                       reg_id_t reg_ptr)
 {
-    // printf("instrument_clean_call\n");
     instr_t *skip_call = INSTR_CREATE_label(drcontext);
     bool short_reaches = true;
 #ifdef X86
@@ -1121,43 +1119,44 @@ event_app_instruction(void *drcontext, void *tag, instrlist_t *bb, instr_t *inst
         ud->last_app_pc = instr_get_app_pc(instr_fetch);
     }
 
-#ifdef ONLY_TRACE_TIMESTAMP
-    if (adjust != 0) {
-        insert_update_buf_ptr(drcontext, bb, where, reg_ptr, DR_PRED_NONE, adjust); i = 0;
+    if (op_only_trace_timestamp.get_value()) {
+        if (adjust != 0) {
+            insert_update_buf_ptr(drcontext, bb, where, reg_ptr, DR_PRED_NONE, adjust); i = 0;
+        }
     }
-#else
-    /* Data entries. */
-    if (instr_operands != NULL &&
-        (instr_reads_memory(instr_operands) || instr_writes_memory(instr_operands))) {
-        dr_pred_type_t pred = instr_get_predicate(instr_operands);
-        if (pred != DR_PRED_NONE && adjust != 0) {
-            // Update buffer ptr and reset adjust to 0, because
-            // we may not execute the inserted code below.
+    else {
+        /* Data entries. */
+        if (instr_operands != NULL &&
+            (instr_reads_memory(instr_operands) || instr_writes_memory(instr_operands))) {
+            dr_pred_type_t pred = instr_get_predicate(instr_operands);
+            if (pred != DR_PRED_NONE && adjust != 0) {
+                // Update buffer ptr and reset adjust to 0, because
+                // we may not execute the inserted code below.
+                insert_update_buf_ptr(drcontext, bb, where, reg_ptr, DR_PRED_NONE, adjust);
+                adjust = 0;
+            }
+
+            /* insert code to add an entry for each memory reference opnd */
+            for (i = 0; i < instr_num_srcs(instr_operands); i++) {
+                if (opnd_is_memory_reference(instr_get_src(instr_operands, i))) {
+                    adjust = instrument_memref(
+                        drcontext, ud, bb, where, reg_ptr, adjust, instr_operands,
+                        instr_get_src(instr_operands, i), i, false, pred);
+                }
+            }
+
+            for (i = 0; i < instr_num_dsts(instr_operands); i++) {
+                if (opnd_is_memory_reference(instr_get_dst(instr_operands, i))) {
+                    adjust = instrument_memref(
+                        drcontext, ud, bb, where, reg_ptr, adjust, instr_operands,
+                        instr_get_dst(instr_operands, i), i, true, pred);
+                }
+            }
+            if (adjust != 0)
+                insert_update_buf_ptr(drcontext, bb, where, reg_ptr, pred, adjust);
+        } else if (adjust != 0)
             insert_update_buf_ptr(drcontext, bb, where, reg_ptr, DR_PRED_NONE, adjust);
-            adjust = 0;
-        }
-
-        /* insert code to add an entry for each memory reference opnd */
-        for (i = 0; i < instr_num_srcs(instr_operands); i++) {
-            if (opnd_is_memory_reference(instr_get_src(instr_operands, i))) {
-                adjust = instrument_memref(
-                    drcontext, ud, bb, where, reg_ptr, adjust, instr_operands,
-                    instr_get_src(instr_operands, i), i, false, pred);
-            }
-        }
-
-        for (i = 0; i < instr_num_dsts(instr_operands); i++) {
-            if (opnd_is_memory_reference(instr_get_dst(instr_operands, i))) {
-                adjust = instrument_memref(
-                    drcontext, ud, bb, where, reg_ptr, adjust, instr_operands,
-                    instr_get_dst(instr_operands, i), i, true, pred);
-            }
-        }
-        if (adjust != 0)
-            insert_update_buf_ptr(drcontext, bb, where, reg_ptr, pred, adjust);
-    } else if (adjust != 0)
-        insert_update_buf_ptr(drcontext, bb, where, reg_ptr, DR_PRED_NONE, adjust);
-#endif
+    }
 
 
     /* Insert code to call clean_call for processing the buffer.

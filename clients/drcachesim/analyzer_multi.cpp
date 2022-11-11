@@ -56,11 +56,6 @@ analyzer_multi_t::analyzer_multi_t()
         parallel_ = false;
     if (!op_indir.get_value().empty() || !op_infile.get_value().empty())
         op_offline.set_value(true); // Some tools check this on post-proc runs.
-    if (!create_analysis_tools()) {
-        success_ = false;
-        error_string_ = "Failed to create analysis tool: " + error_string_;
-        return;
-    }
     // XXX: add a "required" flag to droption to avoid needing this here
     if (op_indir.get_value().empty() && op_infile.get_value().empty() &&
         op_ipc_name.get_value().empty()) {
@@ -71,8 +66,7 @@ analyzer_multi_t::analyzer_multi_t()
         return;
     }
     if (!op_indir.get_value().empty()) {
-        std::string tracedir =
-            raw2trace_directory_t::tracedir_from_rawdir(op_indir.get_value());
+        tracedir = raw2trace_directory_t::tracedir_from_rawdir(op_indir.get_value());
         // We support the trace dir being empty if we haven't post-processed
         // the raw files yet.
         bool needs_processing = false;
@@ -99,6 +93,7 @@ analyzer_multi_t::analyzer_multi_t()
         }
         if (needs_processing) {
             raw2trace_directory_t dir(op_verbose.get_value());
+            dir.only_analyze_main_thread = op_only_analyze_main_thread.get_value();
             std::string dir_err = dir.initialize(op_indir.get_value(), "");
             if (!dir_err.empty()) {
                 success_ = false;
@@ -108,7 +103,8 @@ analyzer_multi_t::analyzer_multi_t()
             raw2trace_t raw2trace(
                 dir.modfile_bytes_, dir.in_files_, dir.out_files_, dir.out_archives_,
                 dir.encoding_file_, nullptr, op_verbose.get_value(), op_jobs.get_value(),
-                op_alt_module_dir.get_value(), op_chunk_instr_count.get_value());
+                op_alt_module_dir.get_value(), op_chunk_instr_count.get_value(), 
+                &(dir.tid_wins), dir.trace_outdir);
             std::string error = raw2trace.do_conversion();
             if (!error.empty()) {
                 success_ = false;
@@ -116,8 +112,10 @@ analyzer_multi_t::analyzer_multi_t()
             }
             printf("raw2trace conversion ends\n");
         }
-        tracedir = raw2trace_directory_t::tracedir_from_rawdir(op_indir.get_value());
-        if (!init_file_reader(tracedir, op_verbose.get_value()))
+
+        uint32_t main_tid, tmp;
+        sscanf(tracedir.c_str(), "drmemtrace.%*[0-9A-Za-z_].%d.%d.%*[0-9A-Za-z_/.]", &main_tid, &tmp); 
+        if (!init_file_reader(tracedir, op_verbose.get_value(), op_only_analyze_main_thread.get_value() ? main_tid : 0))
             success_ = false;
     } else if (op_infile.get_value().empty()) {
         // XXX i#3323: Add parallel analysis support for online tools.
@@ -139,6 +137,12 @@ analyzer_multi_t::analyzer_multi_t()
         // Legacy file.
         if (!init_file_reader(op_infile.get_value(), op_verbose.get_value()))
             success_ = false;
+    }
+
+    if (!create_analysis_tools()) {
+        success_ = false;
+        error_string_ = "Failed to create analysis tool: " + error_string_;
+        return;
     }
 
     // ADDED
@@ -169,7 +173,7 @@ analyzer_multi_t::create_analysis_tools()
     }
     // END
     tools_ = new analysis_tool_t *[max_num_tools_];
-    tools_[0] = drmemtrace_analysis_tool_create();
+    tools_[0] = drmemtrace_analysis_tool_create(tracedir);
     // ADDED
     tools_[0]->analyzer_name = op_simulator_type.get_value();
     // END

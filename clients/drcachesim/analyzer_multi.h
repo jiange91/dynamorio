@@ -53,6 +53,9 @@ protected:
     destroy_analysis_tools();
 
     static const int max_num_tools_ = 8;
+
+private:
+    std::string tracedir;
 };
 
 #endif /* _ANALYZER_MULTI_H_ */

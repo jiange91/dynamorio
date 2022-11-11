@@ -121,7 +121,7 @@ get_reader(const std::string &path, int verbosity)
 }
 
 bool
-analyzer_t::init_file_reader(const std::string &trace_path, int verbosity)
+analyzer_t::init_file_reader(const std::string &trace_path, int verbosity, uint32_t main_tid)
 {
     verbosity_ = verbosity;
     if (trace_path.empty()) {
@@ -178,13 +178,17 @@ analyzer_t::init_file_reader(const std::string &trace_path, int verbosity)
                 // ADDED
                 if (fname.find("analysis") != std::string::npos 
                    || fname.find("timestamp") != std::string::npos
-                   || fname.find("instr_summary") != std::string::npos)
+                   || fname.find("instr_summary") != std::string::npos
+                   || fname.find("bb_count") != std::string::npos)
                     continue;
                 // END
 
-                int tid, tmp;
+                uint32_t tid, tmp;
                 sscanf(fname.c_str(), "drmemtrace.%*[0-9A-Za-z_].%d.%d.trace.gz", &tid, &tmp); // TODO
                 
+                if (main_tid != 0 && main_tid != tid)
+                    continue;
+
                 const std::string file_path = windir + DIRSEP + fname;
                 std::unique_ptr<reader_t> reader = get_reader(file_path, verbosity);
                 if (!reader) {
@@ -351,6 +355,7 @@ analyzer_t::process_tasks(/*ADDED*/ uint32_t worker_id, /*END*/ std::vector<anal
         VPRINT(this, 1, "Worker has no tasks\n");
         return;
     }
+
     VPRINT(this, 1, "Worker %d assigned %zd task(s)\n", (*tasks)[0]->worker,
            tasks->size());
     std::vector<void *> worker_data(num_tools_);
@@ -366,13 +371,17 @@ analyzer_t::process_tasks(/*ADDED*/ uint32_t worker_id, /*END*/ std::vector<anal
         std::vector<void *> shard_data(num_tools_);
         for (int i = 0; i < num_tools_; ++i) {
             // ADDED
-            if (tools_[i]->analyzer_name == "address_space") {
+            if (tools_[i]->analyzer_name == "address_space" || tools_[i]->analyzer_name == "timestamp") {
                 shard_data[i] = tools_[i]->parallel_shard_init(tdata->tid, tdata->win_id, tdata->trace_path, worker_data[i]);
             }
             else 
             // END
                 shard_data[i] = tools_[i]->parallel_shard_init(tdata->index, worker_data[i]);
         }
+
+        if (tools_[0]->analyzer_name == "timestamp")
+            continue;
+
         VPRINT(this, 1, "shard_data[0] is %p\n", shard_data[0]);
         for (; *tdata->iter != *trace_end_; ++(*tdata->iter)) {
             for (int i = 0; i < num_tools_; ++i) {

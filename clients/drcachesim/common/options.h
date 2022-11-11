@@ -58,6 +58,7 @@
 #define CACHE_PARENT_MEMORY "memory"
 // ADDED
 #define ADDRESS_SPACE "address_space"
+#define TIMESTAMP "timestamp"
 // END
 
 #include <string>
@@ -148,6 +149,10 @@ extern droption_t<double> op_confidence_threshold;
 extern droption_t<bool> op_enable_drstatecmp;
 // ADDED
 extern droption_t<bool> op_analyzer_sync;
+extern droption_t<std::string> op_timestamp_file_0;
+extern droption_t<std::string> op_timestamp_file_1;
+extern droption_t<bool> op_only_analyze_main_thread;
+extern droption_t<bool> op_only_trace_timestamp;
 // END
 #ifdef BUILD_PT_TRACER
 extern droption_t<bool> op_enable_kernel_tracing;

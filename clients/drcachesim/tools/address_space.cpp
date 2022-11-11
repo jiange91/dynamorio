@@ -45,8 +45,7 @@ address_space_t_tool_create(const address_space_knobs_t &knobs)
 }
 
 address_space_t::address_space_t(const address_space_knobs_t &knobs)
-    : knobs_(knobs)
-    , line_size_bits_(compute_log2((int)knobs_.line_size))
+    : line_size_bits_(compute_log2((int)knobs.line_size))
 {
 
 }

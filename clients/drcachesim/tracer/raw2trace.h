@@ -49,6 +49,7 @@
 #include <atomic>
 #include <memory>
 #include <set>
+#include <map>
 #include <unordered_map>
 #include "trace_entry.h"
 #include "instru.h"
@@ -769,8 +770,6 @@ public:
     trace_converter_t &
     operator=(trace_converter_t &&) = default;
 #endif
-    uint32_t bb_count;
-
 protected:
 
     /**
@@ -781,7 +780,6 @@ protected:
         : dcontext_(dcontext == nullptr ? dr_standalone_init() : dcontext)
         , passed_dcontext_(dcontext != nullptr)
     {
-        bb_count = 0;
     }
 
     /**
@@ -801,7 +799,8 @@ protected:
      * calling this API.
      */
     std::string
-    process_offline_entry(void *tls, const offline_entry_t *in_entry, thread_id_t tid,
+    process_offline_entry(void *tls, const offline_entry_t *in_entry, 
+                          thread_id_t tid,  uint64_t *bb_count,
                           OUT bool *end_of_record, OUT bool *last_bb_handled)
     {
         trace_entry_t *buf_base = impl()->get_write_buffer(tls);
@@ -875,7 +874,7 @@ protected:
                 return "memref entry found outside of bb";
             }
         } else if (in_entry->pc.type == OFFLINE_TYPE_PC) {
-            // ++bb_count;
+            ++ *bb_count;
             DR_CHECK(reinterpret_cast<trace_entry_t *>(buf) == buf_base,
                      "We shouldn't have buffered anything before calling "
                      "append_bb_entries");
@@ -1238,7 +1237,6 @@ private:
         }
         DR_CHECK(!instrs_are_separate || instr_count == 1,
                  "cannot mix 0-count and >1-count");
-        ++bb_count;
         for (uint i = 0; i < instr_count; ++i) {
             trace_entry_t *buf_start = impl()->get_write_buffer(tls);
             trace_entry_t *buf = buf_start;
@@ -1748,13 +1746,16 @@ public:
     // module_map, encoding_file, thread_files, and out_files are all owned and
     // opened/closed by the caller.  module_map is not a string and can contain binary
     // data.
-    raw2trace_t(const char *module_map, const std::vector<std::istream *> &thread_files,
+    raw2trace_t(const char *module_map, 
+                const std::vector<std::istream *> &thread_files,
                 const std::vector<std::ostream *> &out_files,
                 const std::vector<archive_ostream_t *> &out_archives,
                 file_t encoding_file = INVALID_FILE, void *dcontext = nullptr,
                 unsigned int verbosity = 0, int worker_count = -1,
                 const std::string &alt_module_dir = "",
-                uint64_t chunk_instr_count = 10 * 1000 * 1000);
+                uint64_t chunk_instr_count = 10 * 1000 * 1000,
+                std::vector<std::pair<uint32_t, uint32_t>> *tid_wins = nullptr,
+                std::string trace_outdir = "");
     virtual ~raw2trace_t();
 
     /**
@@ -1838,6 +1839,8 @@ public:
     uint64
     get_statistic(raw2trace_statistic_t stat);
 
+    std::map<uint32_t, std::map<uint32_t, uint64_t>> tid_win_bbcount;
+
 protected:
     // Overridable parts of the interface expected by trace_converter_t.
     virtual const offline_entry_t *
@@ -1870,6 +1873,8 @@ protected:
         raw2trace_thread_data_t()
             : index(0)
             , tid(0)
+            , win_id(0)
+            , bb_count(0)
             , worker(0)
             , thread_file(nullptr)
             , out_archive(nullptr)
@@ -1888,6 +1893,8 @@ protected:
 
         int index;
         thread_id_t tid;
+        uint32_t win_id;
+        uint64_t bb_count;
         int worker;
         std::istream *thread_file;
         archive_ostream_t *out_archive; // May be nullptr.
@@ -2028,6 +2035,8 @@ private:
     emit_new_chunk_header(raw2trace_thread_data_t *tdata);
 
     std::vector<raw2trace_thread_data_t> thread_data_;
+
+    std::string trace_outdir;
 
     int worker_count_;
     std::vector<std::vector<raw2trace_thread_data_t *>> worker_tasks_;

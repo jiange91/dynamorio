@@ -31,11 +31,6 @@
 
 cmake_minimum_required(VERSION 3.7)
 
-option(ONLY_TRACE_TIMESTAMP OFF)
-if (ONLY_TRACE_TIMESTAMP)
-	add_definitions(-DONLY_TRACE_TIMESTAMP)
-endif(ONLY_TRACE_TIMESTAMP)
-
 set(DynamoRIO_INTERNAL ON) # do not import dynamorio lib target
 set(DynamoRIO_DIR ${PROJECT_BINARY_DIR}/cmake)
 find_package(DynamoRIO ${VERSION_NUMBER_MAJOR}.${VERSION_NUMBER_MINOR})

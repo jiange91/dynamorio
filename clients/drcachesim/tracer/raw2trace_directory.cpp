@@ -93,9 +93,8 @@
     } while (0)
 
 std::string
-raw2trace_directory_t::open_thread_files()
+raw2trace_directory_t::open_thread_files(uint32_t win_id)
 {
-    // printf("open_thread_files: %s\n", indir_.c_str());
     VPRINT(1, "Iterating dir %s\n", indir_.c_str());
     directory_iterator_t end;
     directory_iterator_t iter(indir_);
@@ -103,7 +102,7 @@ raw2trace_directory_t::open_thread_files()
         return "Failed to list directory " + indir_ + ": " + iter.error_string();
     }
     for (; iter != end; ++iter) {
-        std::string error = open_thread_log_file((*iter).c_str());
+        std::string error = open_thread_log_file((*iter).c_str(), win_id);
         if (!error.empty())
             return error;
     }
@@ -111,9 +110,8 @@ raw2trace_directory_t::open_thread_files()
 }
 
 std::string
-raw2trace_directory_t::open_thread_log_file(const char *basename)
+raw2trace_directory_t::open_thread_log_file(const char *basename, int win_id)
 {
-    // printf("open_thread_log_file: %s\n", basename);
     char path[MAXIMUM_PATH];
     CHECK(basename[0] != '/', "dir iterator entry %s should not be an absolute path\n",
           basename);
@@ -171,6 +169,13 @@ raw2trace_directory_t::open_thread_log_file(const char *basename)
     }
     NULL_TERMINATE_BUFFER(path);
     std::istream *ifile = nullptr;
+    
+    uint32_t tid, tmp;
+    sscanf(basename, "drmemtrace.%*[0-9A-Za-z_].%d.%d.trace.gz", &tid, &tmp); 
+    if (only_analyze_main_thread && main_tid != tid)
+        return "";
+    tid_wins.push_back(std::make_pair(tid, win_id));
+    
 #ifdef HAS_ZLIB
     if (is_gzipped)
         ifile = new gzip_istream_t(path);
@@ -351,15 +356,17 @@ raw2trace_directory_t::initialize(const std::string &indir, const std::string &o
          indir_.rfind(OUTFILE_SUBDIR) < indir_.size() - strlen(OUTFILE_SUBDIR))) {
         indir_ += std::string(DIRSEP) + OUTFILE_SUBDIR;
     }
-    // printf("indir_: %s\n", indir_.c_str());
-
+    
     std::string modfile_dir = indir_;
     // Support window subdirs.
     
     // DELETED
     // indir_ = window_subdir_if_present(indir_);
     // END
-
+    
+    uint32_t tmp;
+    sscanf(indir_.c_str(), "drmemtrace.%*[0-9A-Za-z_].%d.%d.%*[0-9A-Za-z_/.]", &main_tid, &tmp); 
+    
     if (is_window_subdir(indir_)) {
         // If we're operating on a specific window, point at the parent for the modfile.
         // Windows dr_open_file() doesn't like "..".
@@ -379,7 +386,7 @@ raw2trace_directory_t::initialize(const std::string &indir, const std::string &o
             }
         }
     }
-    // printf("indir_: %s, outdir_: %s\n", indir_.c_str(), outdir_.c_str());
+   
     std::string modfilename =
         modfile_dir + std::string(DIRSEP) + DRMEMTRACE_MODULE_LIST_FILENAME;
     std::string err = read_module_file(modfilename);
@@ -398,12 +405,12 @@ raw2trace_directory_t::initialize(const std::string &indir, const std::string &o
             return "Failed to open encoding file " + encoding_filename;
     }
     
+    trace_outdir = outdir_;
     // ADDED
-    // printf("indir: %s\n", indir_.c_str());
     if (window_subdir_if_present(indir_) == indir_) {
         // if windir exists and indir_ contains windir 
         // Or if windir doesn't exsit at all.
-        return open_thread_files();
+        return open_thread_files(0);
     }
     else {
         // windir exists but indir_ doesn't contain windir
@@ -419,7 +426,7 @@ raw2trace_directory_t::initialize(const std::string &indir, const std::string &o
                 }
             }
             windir_present = true;
-            std::string err = open_thread_files();
+            std::string err = open_thread_files(window_id);
             indir_ = indir_without_window;
             outdir_ = outdir_without_window;
             if (!err.empty())
