@@ -700,6 +700,12 @@ droption_t<bool> op_only_trace_timestamp (
     "Added for our need."
 );
 
+droption_t<uint32_t> op_log_window_limit (
+    DROPTION_SCOPE_CLIENT, "log_window_limit", 60,
+    "Log(The maximum clean_call in one window) OR Log(The maximum size in one window / 4096).",
+    "Added for our need."
+);
+
 // END
 
 #ifdef BUILD_PT_TRACER

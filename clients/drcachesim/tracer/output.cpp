@@ -548,6 +548,20 @@ write_trace_data(void *drcontext, byte *towrite_start, byte *towrite_end,
     }
 }
 
+static void 
+hit_window_limit(void *drcontext) {
+    per_thread_t *data = (per_thread_t *)drmgr_get_tls_field(drcontext, tls_idx);
+    close_thread_file(drcontext);
+
+    size_t header_size = prepend_offline_thread_header(drcontext);
+    DR_ASSERT(data->init_header_size == header_size);
+
+    data->cur_win_id += 1;
+    printf("hit_window_limit: %ld\n", data->cur_win_id);
+    data->cur_win_size = 0;
+    open_new_thread_file(drcontext, data->cur_win_id);
+}
+
 // Should only be called when the trace buffer is empty.
 static void
 set_local_window(void *drcontext, ptr_int_t value)
@@ -1059,6 +1073,9 @@ process_and_output_buffer(void *drcontext, bool skip_size_cap)
     }
     if (has_tracing_windows()) {
         set_local_window(drcontext, tracing_window.load(std::memory_order_acquire));
+    }
+    else if (++data->cur_win_size >= (1ULL << op_log_window_limit.get_value())) {
+        hit_window_limit(drcontext);
     }
 }
 

@@ -8,4 +8,6 @@ time build/bin64/drrun -t drcachesim -simulator_type timestamp -timestamp_file_0
 
 time build/bin64/drrun -t drcachesim -only_trace_timestamp -offline -- ./test/linpack_100/linpack_100 
 
-time build/bin64/drrun -t drcachesim -trace_for_instrs 1000000 -retrace_every_instrs 1 -offline -- ./test/linpack_100/linpack_100
+time build/bin64/drrun -t drcachesim -log_window_limit 5 -offline -- ./test/linpack_100/linpack_100
+
+time build/bin64/drrun -t drcachesim  -trace_for_instrs 1000000 -retrace_every_instrs 1 -offline -- ./test/linpack_100/linpack_100

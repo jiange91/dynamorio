@@ -112,6 +112,8 @@ typedef struct {
     /* For syscall kernel trace. */
     syscall_pt_trace_t syscall_pt_trace;
 #endif
+    uint64_t cur_win_size;
+    uint64_t cur_win_id;
 } per_thread_t;
 
 /* Allocated TLS slot offsets */
