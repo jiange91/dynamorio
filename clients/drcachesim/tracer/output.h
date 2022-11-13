@@ -42,6 +42,9 @@ namespace drmemtrace {
 void
 open_new_window_dir(ptr_int_t window_num);
 
+void
+open_new_window_dir2(ptr_int_t window_num);
+
 int
 append_unit_header(void *drcontext, byte *buf_ptr, thread_id_t tid, ptr_int_t window);
 

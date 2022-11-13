@@ -280,6 +280,20 @@ open_new_window_dir(ptr_int_t window_num)
     NOTIFY(2, "Created new window dir %s\n", windir);
 }
 
+void
+open_new_window_dir2(ptr_int_t window_num)
+{
+    DR_ASSERT(op_offline.get_value());
+    char windir[MAXIMUM_PATH];
+    dr_snprintf(windir, BUFFER_SIZE_ELEMENTS(windir), "%s%s" WINDOW_SUBDIR_FORMAT,
+                logsubdir, DIRSEP, window_num);
+    NULL_TERMINATE_BUFFER(windir);
+    // printf("open_new_window_dir: %s\n", windir);
+    if (!file_ops_func.create_dir(windir))
+        FATAL("Failed to create window subdir %s\n", windir);
+    NOTIFY(2, "Created new window dir %s\n", windir);
+}
+
 static void
 close_thread_file(void *drcontext)
 {
@@ -348,6 +362,18 @@ open_new_thread_file(void *drcontext, ptr_int_t window_num)
         } else if (data->file != INVALID_FILE)
             return false;
     }
+    // ADDED
+    if (op_log_window_limit.get_value() < 60) {
+        dr_snprintf(windir, BUFFER_SIZE_ELEMENTS(windir), "%s%s" WINDOW_SUBDIR_FORMAT,
+                    logsubdir, DIRSEP, window_num);
+        NULL_TERMINATE_BUFFER(windir);
+        dir = windir;
+        if (data->file != INVALID_FILE)
+            return false;
+    }
+    // printf("open_new_file: %s\n", dir);
+    // END
+    
     /* We do not need to call drx_init before using drx_open_unique_appid_file.
      * Since we're now in a subdir we could make the name simpler but this
      * seems nice and complete.
@@ -450,6 +476,7 @@ open_new_thread_file(void *drcontext, ptr_int_t window_num)
 static size_t
 prepend_offline_thread_header(void *drcontext)
 {
+    // printf("prepend_offline_thread_header\n");
     DR_ASSERT(op_offline.get_value());
     /* Write initial headers at the top of the first buffer. */
     per_thread_t *data = (per_thread_t *)drmgr_get_tls_field(drcontext, tls_idx);
@@ -529,7 +556,8 @@ write_trace_data(void *drcontext, byte *towrite_start, byte *towrite_end,
                 wrote = file_ops_func.write_file(data->file, data->buf_lz4, res);
                 DR_ASSERT(static_cast<size_t>(wrote) == res);
                 wrote = size;
-            } else
+                // printf("wrote: %ld\n", wrote);
+            } else 
 #endif
                 wrote = file_ops_func.write_file(data->file, towrite_start, size);
             if (wrote < size) {
@@ -553,11 +581,12 @@ hit_window_limit(void *drcontext) {
     per_thread_t *data = (per_thread_t *)drmgr_get_tls_field(drcontext, tls_idx);
     close_thread_file(drcontext);
 
+    open_new_window_dir2(tracing_window.load(std::memory_order_acquire));
     size_t header_size = prepend_offline_thread_header(drcontext);
     DR_ASSERT(data->init_header_size == header_size);
 
-    data->cur_win_id += 1;
-    printf("hit_window_limit: %ld\n", data->cur_win_id);
+    data->cur_win_id = tracing_window.load();
+    printf("hit_window_limit: %d\n", data->cur_win_id);
     data->cur_win_size = 0;
     open_new_thread_file(drcontext, data->cur_win_id);
 }
@@ -990,6 +1019,12 @@ process_and_output_buffer(void *drcontext, bool skip_size_cap)
         }
     }
 
+    // printf("window: %ld, %d\n", data->cur_win_size, 1 << op_log_window_limit.get_value());
+    // ADDED
+    bool hit_window_limit_flag = op_log_window_limit.get_value() < 60 
+                && (++data->cur_win_size >= (1ULL << op_log_window_limit.get_value()));
+    // END
+
     if (do_write) {
         bool hit_window_end = false;
         if (op_trace_for_instrs.get_value() > 0) {
@@ -1018,6 +1053,17 @@ process_and_output_buffer(void *drcontext, bool skip_size_cap)
                 reached_traced_instrs_threshold(drcontext);
             }
         }
+        
+        // ADDED
+        if (hit_window_limit_flag) {
+            // printf("hit_window_limit_flag\n");
+            size_t add =
+                instru->append_thread_exit(buf_ptr, dr_get_thread_id(drcontext));
+            buf_ptr += add;
+            tracing_window.fetch_add(1, std::memory_order_release);
+        }
+        // END
+        
         size_t skip = 0;
         if (op_use_physical.get_value()) {
             skip = process_buffer_for_physaddr(drcontext, data, header_size, buf_ptr);
@@ -1032,6 +1078,7 @@ process_and_output_buffer(void *drcontext, bool skip_size_cap)
                 output_buffer(drcontext, data, data->buf_base, data->buf_base + header_size + sizeof(offline_entry_t), header_size);
         }
         else {
+            // printf("num: %ld, %ld\n", buf_ptr - data->buf_base, skip);
             current_num_refs +=
                 output_buffer(drcontext, data, data->buf_base + skip, buf_ptr, header_size);
         }
@@ -1074,9 +1121,11 @@ process_and_output_buffer(void *drcontext, bool skip_size_cap)
     if (has_tracing_windows()) {
         set_local_window(drcontext, tracing_window.load(std::memory_order_acquire));
     }
-    else if (++data->cur_win_size >= (1ULL << op_log_window_limit.get_value())) {
+    // ADDED
+    else if (data->cur_win_id < tracing_window.load()) {
         hit_window_limit(drcontext);
     }
+    // END
 }
 
 void
@@ -1124,6 +1173,12 @@ init_thread_io(void *drcontext)
         set_local_window(drcontext, tracing_window.load(std::memory_order_acquire));
 
     if (op_offline.get_value()) {
+        // ADDED
+        if (op_log_window_limit.get_value() < 60) {
+            open_new_thread_file(drcontext, 0);
+        }
+        else
+        // END
         if (tracing_disabled.load(std::memory_order_acquire) == BBDUP_MODE_TRACE) {
             open_new_thread_file(drcontext, get_local_window(data));
         }

@@ -52,8 +52,10 @@ timestamp_t::timestamp_t(const timestamp_knobs_t &knobs)
     ts_file_[1] = new lz4_istream_t(knobs.timestamp_file_1);
     // printf("read_bbcount_file\n");
     read_bbcount_file();
-    // printf("read_timestamp_trace\n");
+    // printf("read_timestamp_trace: single\n");
     read_timestamp_trace(0);
+    // printf("\n");
+    // printf("read_timestamp_trace: numa\n");
     read_timestamp_trace(1);
 }
 
@@ -80,7 +82,8 @@ timestamp_t::read_timestamp_trace(int idx)
     uint32_t cur_win = 0;
     uint64_t cur_bbcount = 0;
     std::vector<std::pair<uint64_t, int64_t>> *cur_vec; 
-    uint64_t cur_ts = 0, start_ts = 0, cur_bbidx = 0;
+    uint64_t cur_ts = 0, start_ts = 0, bb_start_ts = 0;
+    uint64_t cur_bbidx = 0, bbidx = 0;
 
     while (ts_file->read((char *)&entry, sizeof(entry))) {
         if (win2tsvec.find(cur_win) == win2tsvec.end()) {
@@ -90,7 +93,7 @@ timestamp_t::read_timestamp_trace(int idx)
             cur_vec = new std::vector<std::pair<uint64_t, int64_t>>();
             win2tsvec.insert(std::make_pair(cur_win, cur_vec));
             if (cur_bbidx > 0) {
-                cur_vec->push_back(std::make_pair(cur_ts, cur_bbidx));
+                cur_vec->push_back(std::make_pair(bbidx, cur_ts));
             }
         }
         if (entry.timestamp.type == OFFLINE_TYPE_TIMESTAMP) {
@@ -101,15 +104,22 @@ timestamp_t::read_timestamp_trace(int idx)
         }
         else if (entry.addr.type == OFFLINE_TYPE_MEMREF) {
             cur_bbidx += entry.addr.addr;
+            bbidx += entry.addr.addr;
             if (cur_bbidx > cur_bbcount) {
+                ts_span[idx].push_back(cur_ts - bb_start_ts);
+                bb_start_ts = cur_ts;
                 cur_win += 1;
                 cur_bbidx -= cur_bbcount;
             }
             else {
-                cur_vec->push_back(std::make_pair(cur_bbidx, cur_ts));
+                cur_vec->push_back(std::make_pair(bbidx, cur_ts));
                 // printf("%d, %ld, %ld\n", cur_win, cur_ts, cur_bbidx);
             }
         }
+    }
+
+    if (ts_span[idx].size() == cur_win) {
+        ts_span[idx].push_back(cur_ts - bb_start_ts);
     }
 }
 
@@ -218,8 +228,8 @@ timestamp_t::print_shard_timestamps(const shard_data_t *shard) {
     file_1.close();
 
     std::ofstream file_cmp;
-    file_cmp.open(shard->trace_path + DIRSEP + "timestamp_cmp.out");
-    file_cmp << "bb_idx_0,bb_idx_1,timestamp_cmp" << std::endl;
+    file_cmp.open(shard->trace_path + DIRSEP + "timestamp_diff.out");
+    file_cmp << "single_bb_idx,numa_bb_idx,timestamp_diff" << std::endl;
     std::vector<std::pair<uint64_t, int64_t>>* ts_vec_0 = shard->ts_vec[0];
     std::vector<std::pair<uint64_t, int64_t>>* ts_vec_1 = shard->ts_vec[1]; 
     for (size_t i = 0; i < std::min(ts_vec_0->size(), ts_vec_1->size()); ++i) {
@@ -235,6 +245,23 @@ timestamp_t::print_results()
     for (uint32_t tid : tid_lst) {
         std::sort(win_lst[tid].begin(), win_lst[tid].end());
         
+        shard_data_t *shard = shard_map_[std::make_pair(tid, 0)];
+        std::string trace_path = shard->trace_path;
+        std::string win_subdir = "/window.0000";
+        std::size_t found = trace_path.rfind(win_subdir);
+        if (found != std::string::npos) {
+            trace_path.replace(found, win_subdir.length(), "");
+        }
+
+        std::ofstream summary_file;
+        summary_file.open(trace_path + DIRSEP + "timestamp_summary.out");
+        summary_file << "win_id,bbcount,single_ts_span,numa_ts_span,ts_span_diff" << std::endl;
+        for (uint32_t win : win_lst[tid]) {
+            summary_file << win << ',' << win2bbcount[win] << ',' 
+                << ts_span[0][win] << ',' << ts_span[1][win] << ',' << ts_span[1][win] - ts_span[0][win] << std::endl; 
+        }
+        summary_file.close();
+
         for (uint32_t win : win_lst[tid]) {
             shard_data_t* shard = shard_map_[std::make_pair(tid, win)];
             print_shard_timestamps(shard);

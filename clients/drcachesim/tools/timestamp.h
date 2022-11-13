@@ -117,6 +117,7 @@ protected:
 
     std::string trace_dir;
     std::vector<uint64_t> win2bbcount;
+    std::vector<uint64_t> ts_span[2];
     std::istream* ts_file_[2];
     std::map<uint32_t, std::vector<std::pair<uint64_t, int64_t>>* > win2tsvec_[2];
 

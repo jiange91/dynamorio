@@ -1675,6 +1675,13 @@ init_offline_dir(void)
 #endif
     if (has_tracing_windows())
         open_new_window_dir(tracing_window.load(std::memory_order_acquire));
+
+    // ADDED
+    if (op_log_window_limit.get_value() < 60) {
+        open_new_window_dir2(tracing_window.load(std::memory_order_acquire));
+    }
+    // END
+    
     /* If the ops are replaced, it's up the replacer to notify the user.
      * In some cases data is sent over the network and the replaced create_dir is
      * a nop that returns true, in which case we don't want this message.

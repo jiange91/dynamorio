@@ -43,6 +43,7 @@
 // ADDED
 #include "../tools/address_space_create.h"
 #include "../tools/timestamp_create.h"
+#include <cassert>
 // END
 #include "../tools/histogram_create.h"
 #include "../tools/reuse_distance_create.h"
@@ -224,11 +225,20 @@ drmemtrace_analysis_tool_create(std::string trace_dir)
         return address_space_t_tool_create(knobs);
     }
     else if (op_simulator_type.get_value() == TIMESTAMP) {
+        std::string raw_dir = trace_dir;
+        std::string trace_sub(DIRSEP + std::string(TRACE_SUBDIR));
+        std::string raw_sub(DIRSEP + std::string(OUTFILE_SUBDIR));
+        assert(raw_dir.compare(raw_dir.size() - trace_sub.size(), trace_sub.size(), trace_sub) == 0);
+        size_t pos = raw_dir.rfind(trace_sub);
+        assert (pos != std::string::npos);
+        raw_dir.erase(pos, trace_sub.size());
+        raw_dir.insert(pos, raw_sub);
+        
         timestamp_knobs_t knobs;
         knobs.line_size = op_line_size.get_value();
         knobs.trace_dir = trace_dir;
-        knobs.timestamp_file_0 = op_timestamp_file_0.get_value();
-        knobs.timestamp_file_1 = op_timestamp_file_1.get_value();
+        knobs.timestamp_file_0 = raw_dir + DIRSEP + std::string("single.raw.lz4");
+        knobs.timestamp_file_1 = raw_dir + DIRSEP + std::string("numa.raw.lz4");
         return timestamp_t_tool_create(knobs);
     }
     // END
