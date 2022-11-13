@@ -581,7 +581,6 @@ hit_window_limit(void *drcontext) {
     per_thread_t *data = (per_thread_t *)drmgr_get_tls_field(drcontext, tls_idx);
     close_thread_file(drcontext);
 
-    open_new_window_dir2(tracing_window.load(std::memory_order_acquire));
     size_t header_size = prepend_offline_thread_header(drcontext);
     DR_ASSERT(data->init_header_size == header_size);
 
@@ -1060,7 +1059,11 @@ process_and_output_buffer(void *drcontext, bool skip_size_cap)
             size_t add =
                 instru->append_thread_exit(buf_ptr, dr_get_thread_id(drcontext));
             buf_ptr += add;
-            tracing_window.fetch_add(1, std::memory_order_release);
+            if (data->cur_win_id == tracing_window.load()) {
+                printf("open_new_window_dir\n");
+                tracing_window.fetch_add(1, std::memory_order_release);
+                open_new_window_dir2(tracing_window.load(std::memory_order_acquire));
+            }
         }
         // END
         

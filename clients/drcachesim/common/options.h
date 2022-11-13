@@ -152,8 +152,8 @@ extern droption_t<bool> op_analyzer_sync;
 extern droption_t<std::string> op_timestamp_file_0;
 extern droption_t<std::string> op_timestamp_file_1;
 extern droption_t<bool> op_only_analyze_main_thread;
-extern droption_t<bool> op_only_trace_timestamp;
 extern droption_t<uint32_t> op_log_window_limit;
+extern droption_t<bool> op_only_trace_timestamp;
 // END
 #ifdef BUILD_PT_TRACER
 extern droption_t<bool> op_enable_kernel_tracing;
