@@ -258,7 +258,7 @@ timestamp_t::print_results()
         summary_file << "win_id,bbcount,single_ts_span,numa_ts_span,ts_span_diff" << std::endl;
         for (uint32_t win : win_lst[tid]) {
             summary_file << win << ',' << win2bbcount[win] << ',' 
-                << ts_span[0][win] << ',' << ts_span[1][win] << ',' << ts_span[1][win] - ts_span[0][win] << std::endl; 
+                << ts_span[0][win] << ',' << ts_span[1][win] << ',' << (int64_t) ts_span[1][win] - (int64_t) ts_span[0][win] << std::endl; 
         }
         summary_file.close();
 
