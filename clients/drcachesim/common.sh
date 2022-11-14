@@ -15,4 +15,8 @@ time build/bin64/drrun -t drcachesim  -trace_for_instrs 1000000 -retrace_every_i
 time build/bin64/drrun -t drcachesim -simulator_type address_space -line_size 8 -only_analyze_main_thread -indir drmemtrace.nyc.2841584.3218.dir
 ./test/nyc/AIFM/aifm/DataFrame/original/build/bin/nyc
 
-time build/bin64/drrun -t drcachesim -simulator_type address_space -line_size 8 -jobs 3 -analyze_window_subset 0,2,4 -indr drmemtrace.sample.2936316.8302.dir
+time build/bin64/drrun -t drcachesim -simulator_type address_space -line_size 8 -jobs 3 -analyze_window_subset 0,2,4 -indir drmemtrace.sample.2936316.8302.dir
+
+
+
+time build/bin64/drrun -t drcachesim -simulator_type address_space -line_size 8 -jobs 3 -analyze_window_subset 150,75,38 -indir drmemtrace.nyc.2843781.4348.dir

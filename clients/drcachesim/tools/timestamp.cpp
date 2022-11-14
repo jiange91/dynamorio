@@ -50,10 +50,9 @@ timestamp_t::timestamp_t(const timestamp_knobs_t &knobs)
     , main_tid(knobs.main_tid)
     , total_bbcount(0)
 {   
-    std::cout << "file: " << knobs.timestamp_file_0 << ' ' << knobs.timestamp_file_1 << std::endl;
     ts_file_[0] = new lz4_istream_t(knobs.timestamp_file_0);
     ts_file_[1] = new lz4_istream_t(knobs.timestamp_file_1);
-    printf("read_bbcount_file\n");
+    // printf("read_bbcount_file\n");
     read_bbcount_file();
     printf("read_timestamp_trace: single\n");
     read_timestamp_trace(0);
@@ -121,14 +120,14 @@ timestamp_t::read_timestamp_trace(int idx)
         }
     }
 
-    printf("span: %ld\n", ts_span[idx].size());
+    // printf("span: %ld\n", ts_span[idx].size());
     if (ts_span[idx].size() < win2bbcount.size()) {
         ts_span[idx].push_back(cur_ts - bb_start_ts);
     }
 
-    printf("end: %d, %ld, %ld\n", cur_win, cur_bbidx, win2bbcount.back());
-    printf("ts_span: %ld\n", ts_span[idx].size());
-    printf("bb_count: %ld, %ld\n", total_bbcount, bbidx);
+    // printf("end: %d, %ld, %ld\n", cur_win, cur_bbidx, win2bbcount.back());
+    // printf("ts_span: %ld\n", ts_span[idx].size());
+    // printf("bb_count: %ld, %ld\n", total_bbcount, bbidx);
 }
 
 std::string
@@ -154,7 +153,7 @@ timestamp_t::read_bbcount_file()
         total_bbcount += bb_count;
     }
 
-    printf("win2bbcount: %ld\n", win2bbcount.size());
+    // printf("win2bbcount: %ld\n", win2bbcount.size());
     return tmp != nullptr ? "" : "error";
 }
 
@@ -258,9 +257,9 @@ timestamp_t::print_shard_timestamps(const shard_data_t *shard) {
 bool
 timestamp_t::print_results()
 {
-    printf("print_results\n");
+    // printf("print_results\n");
     for (uint32_t tid : tid_lst) {
-        printf("tid: %d\n", tid);
+        // printf("tid: %d\n", tid);
         std::sort(win_lst[tid].begin(), win_lst[tid].end());
         
         shard_data_t *shard = shard_map_[std::make_pair(tid, 0)];

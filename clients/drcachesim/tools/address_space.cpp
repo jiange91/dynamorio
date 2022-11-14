@@ -81,6 +81,7 @@ address_space_t::parallel_shard_init(int shard_index, void *worker_data)
 void*
 address_space_t::parallel_shard_init(uint32_t tid, uint32_t win_id, std::string trace_path, void *worker_data)
 {
+    // printf("init: %d, %d\n", tid, win_id);
     shard_data_t *shard = new shard_data_t(tid, win_id, trace_path);
     if (std::find(tid_lst.begin(), tid_lst.end(), tid) == tid_lst.end()) {
         tid_lst.push_back(tid);
@@ -199,6 +200,7 @@ address_space_t::print_shard_results(const shard_data_t *shard)
         }
     }
     out_file.close();
+    printf("end: %d\n", shard->window_id);
     // printf("Result for window %d\n", shard->window_id);   
     // printf("Total accesses: %ld\n", shard->num_refs);
     // for (auto it = shard->ref_map.begin(); it != shard->ref_map.end(); ++it) {
@@ -262,8 +264,10 @@ address_space_t::print_total_timestamps(uint32_t tid, const std::string& trace_p
 bool
 address_space_t::print_results()
 {
+    printf("print_results\n");
     for (uint32_t tid : tid_lst) {
-         assert(tid_map.find(tid) != tid_map.end());
+        printf("tid: %d\n", tid);
+        assert(tid_map.find(tid) != tid_map.end());
         auto total_map = tid_map[tid];
 
         std::sort(win_lst[tid].begin(), win_lst[tid].end());
@@ -272,12 +276,12 @@ address_space_t::print_results()
         //     print_shard_results(shard_map_[std::make_pair(tid, win)]);
         // }
 
-        shard_data_t *shard = shard_map_[std::make_pair(tid, 0)];
+        shard_data_t *shard = shard_map_.begin()->second;
         std::string trace_path = shard->trace_path;
-        std::string win_subdir = "/trace/window.0000";
+        std::string win_subdir = "/trace/window";
         std::size_t found = trace_path.rfind(win_subdir);
         if (found != std::string::npos) {
-            trace_path.replace(found, win_subdir.length(), "");
+            trace_path.replace(found, (int) trace_path.length() - found, "");
             print_total_results(tid, trace_path);
             // print_total_timestamps(tid, trace_path);
         }
@@ -287,6 +291,7 @@ address_space_t::print_results()
         summary_file << "win_id,mem_locs,mem_refs,instrs,branches" << std::endl;
         uint64_t total_refs = 0, total_instrs = 0,  total_branches = 0;
         for (uint32_t win : win_lst[tid]) {
+            printf("win: %d\n", win);
             shard_data_t* shard = shard_map_[std::make_pair(tid, win)];
             summary_file << win << "," << shard->mem_locs << "," << shard->num_refs << "," << shard->num_non_branches + shard->num_branches << "," << shard->num_branches << std::endl;
             total_refs += shard->num_refs;

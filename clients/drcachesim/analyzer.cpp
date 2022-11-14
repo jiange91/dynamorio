@@ -129,7 +129,6 @@ analyzer_t::init_file_reader(const std::string &trace_path, int verbosity, uint3
         ERRMSG("Trace file name is empty\n");
         return false;
     }
-    printf("num_tools_: %d\n", num_tools_);
     for (int i = 0; i < num_tools_; ++i) {
         if (parallel_ && !tools_[i]->parallel_shard_supported()) {
             parallel_ = false;
@@ -139,12 +138,14 @@ analyzer_t::init_file_reader(const std::string &trace_path, int verbosity, uint3
     if (parallel_ && directory_iterator_t::is_directory(trace_path)) {
         // ADDED
         std::vector<std::string> windirs;
+        std::vector<uint32_t> win_ids;
         if (trace_path.rfind("window") != std::string::npos || 
             !directory_iterator_t::is_directory(trace_path + std::string(DIRSEP) + "window.0000")) {
             // if (raw2trace_directory_t::window_subdir_if_present(trace_path) == trace_path) {
             // if windir exists and trace_path contains windir 
             // Or if windir doesn't exsit at all.
             windirs.push_back(trace_path);
+            win_ids.push_back(0);
         }
         else {
             // windir exists but trace_path doesn't contain windir
@@ -158,7 +159,8 @@ analyzer_t::init_file_reader(const std::string &trace_path, int verbosity, uint3
                     if (win_subset.size() == 0 ||
                         std::find(win_subset.begin(), win_subset.end(), window_id) != win_subset.end()) {
                         windirs.push_back(windir);
-                        printf("analyze_win: %d\n", window_id);
+                        win_ids.push_back(window_id);
+                        // printf("analyze_win: %d\n", window_id);
                     }
                 }
                 else {
@@ -170,6 +172,7 @@ analyzer_t::init_file_reader(const std::string &trace_path, int verbosity, uint3
 
         for (size_t i = 0; i < windirs.size(); ++i) {
             std::string windir = windirs[i];
+            uint32_t window_id = win_ids[i];
             directory_iterator_t end;
             directory_iterator_t iter(windir);
             if (!iter) {
@@ -201,7 +204,7 @@ analyzer_t::init_file_reader(const std::string &trace_path, int verbosity, uint3
                     return false;
                 }
                 thread_data_.push_back(analyzer_shard_data_t(
-                    static_cast<int>(thread_data_.size()), std::move(reader), file_path, windir, tid, i));
+                    static_cast<int>(thread_data_.size()), std::move(reader), file_path, windir, tid, window_id));
                 VPRINT(this, 2, "Opened reader for %s\n", file_path.c_str());
             }
         }
