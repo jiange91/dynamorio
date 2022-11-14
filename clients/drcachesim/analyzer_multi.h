@@ -56,6 +56,9 @@ protected:
 
 private:
     std::string tracedir;
+    uint32_t main_tid;
+
+    std::vector<uint32_t>arg_to_vec(std::string str);
 };
 
 #endif /* _ANALYZER_MULTI_H_ */

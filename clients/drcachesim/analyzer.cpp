@@ -32,6 +32,7 @@
 
 #include <iostream>
 #include <thread>
+#include <algorithm>
 #include "analysis_tool.h"
 #include "analyzer.h"
 #include "reader/file_reader.h"
@@ -121,13 +122,14 @@ get_reader(const std::string &path, int verbosity)
 }
 
 bool
-analyzer_t::init_file_reader(const std::string &trace_path, int verbosity, uint32_t main_tid)
+analyzer_t::init_file_reader(const std::string &trace_path, int verbosity, uint32_t main_tid, std::vector<uint32_t> win_subset)
 {
     verbosity_ = verbosity;
     if (trace_path.empty()) {
         ERRMSG("Trace file name is empty\n");
         return false;
     }
+    printf("num_tools_: %d\n", num_tools_);
     for (int i = 0; i < num_tools_; ++i) {
         if (parallel_ && !tools_[i]->parallel_shard_supported()) {
             parallel_ = false;
@@ -150,10 +152,14 @@ analyzer_t::init_file_reader(const std::string &trace_path, int verbosity, uint3
             for (int window_id = 0; ; ++window_id) {
                 char subdir[20];
                 sprintf(subdir, "window.%04d", window_id);
+
                 std::string windir = trace_path + std::string(DIRSEP) + std::string(subdir);
                 if (directory_iterator_t::is_directory(windir)) {
-                    windirs.push_back(windir);
-                    // windir_present = true;
+                    if (win_subset.size() == 0 ||
+                        std::find(win_subset.begin(), win_subset.end(), window_id) != win_subset.end()) {
+                        windirs.push_back(windir);
+                        printf("analyze_win: %d\n", window_id);
+                    }
                 }
                 else {
                     break;

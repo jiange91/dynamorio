@@ -706,6 +706,12 @@ droption_t<bool> op_only_trace_timestamp (
     "Added for our need."
 );
 
+droption_t<std::string> op_analyze_window_subset (
+    DROPTION_SCOPE_FRONTEND, "analyze_window_subset", "",
+    "Analyze window subset.",
+    "Added for our need."
+);
+
 // END
 
 #ifdef BUILD_PT_TRACER

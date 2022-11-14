@@ -138,7 +138,7 @@ get_cache_simulator_knobs()
 }
 
 analysis_tool_t *
-drmemtrace_analysis_tool_create(std::string trace_dir)
+drmemtrace_analysis_tool_create(std::string trace_dir, uint32_t main_tid)
 {
     if (op_simulator_type.get_value() == CPU_CACHE) {
         const std::string &config_file = op_config_file.get_value();
@@ -220,11 +220,14 @@ drmemtrace_analysis_tool_create(std::string trace_dir)
     } 
     // ADDED
     else if (op_simulator_type.get_value() == ADDRESS_SPACE) {
+        std::string sub = op_analyze_window_subset.get_value();
+        printf("sub: %s\n", sub.c_str());
+
         address_space_knobs_t knobs;
         knobs.line_size = op_line_size.get_value();
         return address_space_t_tool_create(knobs);
     }
-    else if (op_simulator_type.get_value() == TIMESTAMP) {
+    else if (op_simulator_type.get_value() == TIMESTAMP) {   
         std::string raw_dir = trace_dir;
         std::string trace_sub(DIRSEP + std::string(TRACE_SUBDIR));
         std::string raw_sub(DIRSEP + std::string(OUTFILE_SUBDIR));
@@ -239,6 +242,8 @@ drmemtrace_analysis_tool_create(std::string trace_dir)
         knobs.trace_dir = trace_dir;
         knobs.timestamp_file_0 = raw_dir + DIRSEP + std::string("single.raw.lz4");
         knobs.timestamp_file_1 = raw_dir + DIRSEP + std::string("numa.raw.lz4");
+        knobs.main_tid = main_tid;
+        printf("main_tid: %d\n", main_tid);
         return timestamp_t_tool_create(knobs);
     }
     // END

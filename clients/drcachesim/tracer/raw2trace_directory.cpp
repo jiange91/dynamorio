@@ -174,6 +174,7 @@ raw2trace_directory_t::open_thread_log_file(const char *basename, int win_id)
     sscanf(basename, "drmemtrace.%*[0-9A-Za-z_].%d.%d.trace.gz", &tid, &tmp); 
     if (only_analyze_main_thread && main_tid != tid)
         return "";
+    printf("tid: %d, %d\n", tid, win_id);
     tid_wins.push_back(std::make_pair(tid, win_id));
     
 #ifdef HAS_ZLIB

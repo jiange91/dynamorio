@@ -113,9 +113,11 @@ analyzer_multi_t::analyzer_multi_t()
             printf("raw2trace conversion ends\n");
         }
 
-        uint32_t main_tid, tmp;
+        std::vector<uint32_t> win_subset = arg_to_vec(op_analyze_window_subset.get_value());
+
+        uint32_t tmp;
         sscanf(tracedir.c_str(), "drmemtrace.%*[0-9A-Za-z_].%d.%d.%*[0-9A-Za-z_/.]", &main_tid, &tmp); 
-        if (!init_file_reader(tracedir, op_verbose.get_value(), op_only_analyze_main_thread.get_value() ? main_tid : 0))
+        if (!init_file_reader(tracedir, op_verbose.get_value(), op_only_analyze_main_thread.get_value() ? main_tid : 0, win_subset))
             success_ = false;
     } else if (op_infile.get_value().empty()) {
         // XXX i#3323: Add parallel analysis support for online tools.
@@ -159,6 +161,25 @@ analyzer_multi_t::~analyzer_multi_t()
     destroy_analysis_tools();
 }
 
+
+std::vector<uint32_t> 
+analyzer_multi_t::arg_to_vec(std::string str) {
+    std::vector<uint32_t> vec;
+    uint32_t win = 0;
+    for (size_t i = 0; i < str.length(); ++i) {
+        if ('0' <= str[i] && str[i] <= '9') {
+            win = win * 10 + (str[i] - '0');
+        }
+        else {
+            vec.push_back(win);
+            win = 0;
+        }
+    }
+    if (win > 0)
+        vec.push_back(win);
+    return vec;
+}   
+
 bool
 analyzer_multi_t::create_analysis_tools()
 {
@@ -173,7 +194,7 @@ analyzer_multi_t::create_analysis_tools()
     }
     // END
     tools_ = new analysis_tool_t *[max_num_tools_];
-    tools_[0] = drmemtrace_analysis_tool_create(tracedir);
+    tools_[0] = drmemtrace_analysis_tool_create(tracedir, main_tid);
     // ADDED
     tools_[0]->analyzer_name = op_simulator_type.get_value();
     // END

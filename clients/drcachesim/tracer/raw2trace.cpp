@@ -791,10 +791,11 @@ raw2trace_t::do_conversion()
 
     if (trace_outdir != "") {
         for (auto it = tid_win_bbcount.begin(); it != tid_win_bbcount.end(); ++it) {
+            uint32_t tid = it->first;
             auto win_mp = it->second;
 
             std::ofstream count_file;
-            count_file.open(trace_outdir + DIRSEP + "bb_count.out");
+            count_file.open(trace_outdir + DIRSEP + "bb_count." + std::to_string(tid) + ".out");
             count_file << "win_id,bb_count" << std::endl;
             for (auto it2 = win_mp.begin(); it2 != win_mp.end(); ++it2) {
                 count_file << it2->first << "," << it2->second << std::endl;

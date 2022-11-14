@@ -140,6 +140,8 @@ protected:
     std::mutex shard_map_mutex_;
     std::vector<uint32_t> tid_lst;
     std::map<uint32_t, std::vector<uint32_t>> win_lst;
+    uint32_t main_tid;
+    uint64_t total_bbcount;
 };
 
 

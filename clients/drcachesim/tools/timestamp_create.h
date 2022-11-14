@@ -48,6 +48,7 @@ struct timestamp_knobs_t {
         , timestamp_file_1("")
         , line_size(64)
         , verbose(0)
+        , main_tid(0)
     {
     }
     std::string trace_dir;
@@ -55,6 +56,7 @@ struct timestamp_knobs_t {
     std::string timestamp_file_1;
     unsigned int line_size;
     unsigned int verbose;
+    uint32_t main_tid;
 };
 
 /** Creates an analysis tool which computes reuse distance. */

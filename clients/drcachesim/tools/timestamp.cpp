@@ -47,20 +47,24 @@ timestamp_t_tool_create(const timestamp_knobs_t &knobs)
 timestamp_t::timestamp_t(const timestamp_knobs_t &knobs)
     : trace_dir(knobs.trace_dir)
     , line_size_bits_(compute_log2((int)knobs.line_size))
+    , main_tid(knobs.main_tid)
+    , total_bbcount(0)
 {   
+    std::cout << "file: " << knobs.timestamp_file_0 << ' ' << knobs.timestamp_file_1 << std::endl;
     ts_file_[0] = new lz4_istream_t(knobs.timestamp_file_0);
     ts_file_[1] = new lz4_istream_t(knobs.timestamp_file_1);
-    // printf("read_bbcount_file\n");
+    printf("read_bbcount_file\n");
     read_bbcount_file();
-    // printf("read_timestamp_trace: single\n");
+    printf("read_timestamp_trace: single\n");
     read_timestamp_trace(0);
-    // printf("\n");
-    // printf("read_timestamp_trace: numa\n");
+    printf("read_timestamp_trace: numa\n");
     read_timestamp_trace(1);
+    // printf("init end\n");
 }
 
 timestamp_t::~timestamp_t()
 {
+    // printf("~timestamp_t\n");
     for (auto &shard : shard_map_) {
         delete shard.second;
     }
@@ -76,8 +80,6 @@ void
 timestamp_t::read_timestamp_trace(int idx)
 {
     std::istream *ts_file = ts_file_[idx];
-    std::map<uint32_t, std::vector<std::pair<uint64_t, int64_t>>*> &win2tsvec = win2tsvec_[idx];
-    
     offline_entry_t entry;
     uint32_t cur_win = 0;
     uint64_t cur_bbcount = 0;
@@ -86,12 +88,13 @@ timestamp_t::read_timestamp_trace(int idx)
     uint64_t cur_bbidx = 0, bbidx = 0;
 
     while (ts_file->read((char *)&entry, sizeof(entry))) {
-        if (win2tsvec.find(cur_win) == win2tsvec.end()) {
+        if (win2tsvec_[idx].find(cur_win) == win2tsvec_[idx].end()) {
+            // printf("cur_win: %d, %ld\n", cur_win, win2bbcount.size());
             if (cur_win >= win2bbcount.size())
                 break;
             cur_bbcount = win2bbcount[cur_win];
             cur_vec = new std::vector<std::pair<uint64_t, int64_t>>();
-            win2tsvec.insert(std::make_pair(cur_win, cur_vec));
+            win2tsvec_[idx].insert(std::make_pair(cur_win, cur_vec));
             if (cur_bbidx > 0) {
                 cur_vec->push_back(std::make_pair(bbidx, cur_ts));
             }
@@ -118,19 +121,22 @@ timestamp_t::read_timestamp_trace(int idx)
         }
     }
 
-    if (ts_span[idx].size() == cur_win) {
+    printf("span: %ld\n", ts_span[idx].size());
+    if (ts_span[idx].size() < win2bbcount.size()) {
         ts_span[idx].push_back(cur_ts - bb_start_ts);
     }
+
+    printf("end: %d, %ld, %ld\n", cur_win, cur_bbidx, win2bbcount.back());
+    printf("ts_span: %ld\n", ts_span[idx].size());
+    printf("bb_count: %ld, %ld\n", total_bbcount, bbidx);
 }
 
 std::string
 timestamp_t::read_bbcount_file() 
 {    
-    std::string filename = trace_dir + DIRSEP + "bb_count.out";
+    std::string filename = trace_dir + DIRSEP + "bb_count." + std::to_string(main_tid) + ".out";
     FILE* file = fopen(filename.c_str(), "r");
 
-    // printf("bbcount file: %s\n", filename.c_str());
-    
     if (file == NULL) {
         return "no such file.";
     }
@@ -145,8 +151,10 @@ timestamp_t::read_bbcount_file()
         f_res = fscanf(file, "%d,%ld", &win_id, &bb_count);
         if (f_res != 2) break;
         win2bbcount.push_back(bb_count);
+        total_bbcount += bb_count;
     }
 
+    printf("win2bbcount: %ld\n", win2bbcount.size());
     return tmp != nullptr ? "" : "error";
 }
 
@@ -165,6 +173,7 @@ timestamp_t::parallel_shard_init(int shard_index, void *worker_data)
 void*
 timestamp_t::parallel_shard_init(uint32_t tid, uint32_t win_id, std::string trace_path, void *worker_data)
 {
+    // printf("parallel_shard_init\n");
     shard_data_t *shard = new shard_data_t(tid, win_id, trace_path, win2tsvec_[0][win_id], win2tsvec_[1][win_id]);
     if (std::find(tid_lst.begin(), tid_lst.end(), tid) == tid_lst.end()) {
         tid_lst.push_back(tid);
@@ -177,6 +186,7 @@ timestamp_t::parallel_shard_init(uint32_t tid, uint32_t win_id, std::string trac
     }
     std::lock_guard<std::mutex> guard(shard_map_mutex_);
     shard_map_[std::make_pair(tid, win_id)] = shard;
+    // printf("parallel_shard_init end: %d, %d\n", tid, win_id);
     return reinterpret_cast<void *>(shard);
 }
 
@@ -219,6 +229,8 @@ timestamp_t::print_shard_timestamps(const shard_data_t *shard) {
     }
     file_0.close();
 
+    //printf("file_0\n");
+
     std::ofstream file_1;
     file_1.open(shard->trace_path + DIRSEP + "timestamp_1.out");
     file_1 << "bb_idx,timestamp" << std::endl;
@@ -226,6 +238,8 @@ timestamp_t::print_shard_timestamps(const shard_data_t *shard) {
         file_1 << p.first << ',' << p.second << std::endl;
     }
     file_1.close();
+
+    //printf("file_1\n");
 
     std::ofstream file_cmp;
     file_cmp.open(shard->trace_path + DIRSEP + "timestamp_diff.out");
@@ -236,13 +250,17 @@ timestamp_t::print_shard_timestamps(const shard_data_t *shard) {
         file_cmp << (*ts_vec_0)[i].first << ' ' << (*ts_vec_1)[i].first << ' ' << (*ts_vec_1)[i].second - (*ts_vec_0)[i].second << std::endl;
     }
     file_cmp.close();
+
+    //printf("file_cmp\n");
 }
 
 
 bool
 timestamp_t::print_results()
 {
+    printf("print_results\n");
     for (uint32_t tid : tid_lst) {
+        printf("tid: %d\n", tid);
         std::sort(win_lst[tid].begin(), win_lst[tid].end());
         
         shard_data_t *shard = shard_map_[std::make_pair(tid, 0)];
@@ -263,8 +281,11 @@ timestamp_t::print_results()
         summary_file.close();
 
         for (uint32_t win : win_lst[tid]) {
+            // printf("win: %d\n", win);
             shard_data_t* shard = shard_map_[std::make_pair(tid, win)];
+            //printf("print_shard_timestamps: %d\n", win);
             print_shard_timestamps(shard);
+            //printf("print_shard_timestamps end: %d\n", win);
         }
     }
     

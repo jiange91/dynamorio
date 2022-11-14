@@ -163,7 +163,8 @@ protected:
     };
 
     bool
-    init_file_reader(const std::string &trace_path, int verbosity = 0, uint32_t main_tid = 0);
+    init_file_reader(const std::string &trace_path, int verbosity = 0, uint32_t main_tid = 0, 
+                    std::vector<uint32_t> win_subset = {});
 
     // This finalizes the trace_iter setup.  It can block and is meant to be
     // called at the top of run() or begin().

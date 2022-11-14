@@ -46,6 +46,6 @@
  * returns false, indicates failure.
  */
 analysis_tool_t *
-drmemtrace_analysis_tool_create(std::string trace_dir);
+drmemtrace_analysis_tool_create(std::string trace_dir, uint32_t main_tid);
 
 #endif /* _ANALYSIS_TOOL_INTERFACE_H_ */

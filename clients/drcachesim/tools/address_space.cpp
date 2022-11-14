@@ -103,7 +103,7 @@ address_space_t::parallel_shard_exit(void *shard_data)
 {
     shard_data_t *shard = reinterpret_cast<shard_data_t *>(shard_data);
     print_shard_results(shard);
-    print_shard_timestamps(shard);
+    // print_shard_timestamps(shard);
     shard->mem_locs = shard->ref_map.size();
     shard->ref_map.clear();
     // Nothing (we read the shard data in print_results).
@@ -133,13 +133,14 @@ address_space_t::parallel_shard_memref(void *shard_data, const memref_t &memref)
     //     return true;
     // }
 
-    if (memref.marker.type == TRACE_TYPE_MARKER) {
-        if (memref.marker.marker_type == TRACE_MARKER_TYPE_TIMESTAMP) {
-            shard->ts_vec.push_back(std::make_pair(memref.marker.marker_value, 0));
-            shard->memref_after_ts = true;
-        }
-    }
-    else if (memref.data.type == TRACE_TYPE_INSTR) {
+    // if (memref.marker.type == TRACE_TYPE_MARKER) {
+    //     if (memref.marker.marker_type == TRACE_MARKER_TYPE_TIMESTAMP) {
+    //         shard->ts_vec.push_back(std::make_pair(memref.marker.marker_value, 0));
+    //         shard->memref_after_ts = true;
+    //     }
+    // }
+    // else 
+    if (memref.data.type == TRACE_TYPE_INSTR) {
         ++shard->num_non_branches;
     }
     else if (memref.data.type >= TRACE_TYPE_INSTR_DIRECT_JUMP && 
@@ -278,7 +279,7 @@ address_space_t::print_results()
         if (found != std::string::npos) {
             trace_path.replace(found, win_subdir.length(), "");
             print_total_results(tid, trace_path);
-            print_total_timestamps(tid, trace_path);
+            // print_total_timestamps(tid, trace_path);
         }
 
         std::ofstream summary_file;
