@@ -133,7 +133,7 @@ timestamp_t::read_timestamp_trace(int idx)
 std::string
 timestamp_t::read_bbcount_file() 
 {    
-    std::string filename = trace_dir + DIRSEP + "bb_count." + std::to_string(main_tid) + ".out";
+    std::string filename = trace_dir + DIRSEP + "static_info." + std::to_string(main_tid) + ".out";
     FILE* file = fopen(filename.c_str(), "r");
 
     if (file == NULL) {
@@ -146,9 +146,10 @@ timestamp_t::read_bbcount_file()
     
     uint32_t win_id;
     uint64_t bb_count;
+    uint64_t memref;
     for (uint32_t i = 0; ; ++i) {
-        f_res = fscanf(file, "%d,%ld", &win_id, &bb_count);
-        if (f_res != 2) break;
+        f_res = fscanf(file, "%d,%ld,%ld", &win_id, &bb_count, &memref);
+        if (f_res != 3) break;
         win2bbcount.push_back(bb_count);
         total_bbcount += bb_count;
     }
