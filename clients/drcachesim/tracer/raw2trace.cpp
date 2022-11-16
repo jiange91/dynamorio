@@ -666,7 +666,8 @@ raw2trace_t::process_next_thread_buffer(raw2trace_thread_data_t *tdata, OUT bool
         if (entry.extended.ext == OFFLINE_EXT_TYPE_MARKER &&
             entry.extended.valueB == TRACE_MARKER_TYPE_WINDOW_ID)
             tdata->last_window = entry.extended.valueA;
-        tdata->error = process_offline_entry(tdata, &entry, tdata->tid, &(tdata->bb_count), 
+        tdata->error = process_offline_entry(tdata, &entry, tdata->tid, 
+                                            &(tdata->bb_count), &(tdata->memref), 
                                             end_of_record, &last_bb_handled);
         if (!tdata->error.empty())
             return tdata->error;
@@ -692,7 +693,8 @@ raw2trace_t::process_thread_file(raw2trace_thread_data_t *tdata)
                 entry.extended.type = OFFLINE_TYPE_EXTENDED;
                 entry.extended.ext = OFFLINE_EXT_TYPE_FOOTER;
                 bool last_bb_handled = true;
-                tdata->error = process_offline_entry(tdata, &entry, tdata->tid, &(tdata->bb_count),
+                tdata->error = process_offline_entry(tdata, &entry, tdata->tid, 
+                                                    &(tdata->bb_count), &(tdata->memref),
                                                      &end_of_file, &last_bb_handled);
                 CHECK(end_of_file, "Synthetic footer failed");
                 if (!tdata->error.empty())
@@ -783,22 +785,23 @@ raw2trace_t::do_conversion()
         uint32_t tid = thread_data_[i].tid;
         uint32_t win_id = thread_data_[i].win_id;
         uint64_t bb_count = thread_data_[i].bb_count;
-        if (tid_win_bbcount.find(tid) == tid_win_bbcount.end()) {
-            tid_win_bbcount.insert(std::make_pair(tid, std::map<uint32_t, uint64_t>())); 
+        uint64_t memref = thread_data_[i].memref;
+        if (tid2win2info.find(tid) == tid2win2info.end()) {
+            tid2win2info.insert(std::make_pair(tid, std::map<uint32_t, std::pair<uint64_t, uint64_t>>())); 
         }    
-        tid_win_bbcount[tid].insert(std::make_pair(win_id, bb_count));
+        tid2win2info[tid].insert(std::make_pair(win_id, std::make_pair(bb_count, memref)));
     }
 
     if (trace_outdir != "") {
-        for (auto it = tid_win_bbcount.begin(); it != tid_win_bbcount.end(); ++it) {
+        for (auto it = tid2win2info.begin(); it != tid2win2info.end(); ++it) {
             uint32_t tid = it->first;
             auto win_mp = it->second;
 
             std::ofstream count_file;
-            count_file.open(trace_outdir + DIRSEP + "bb_count." + std::to_string(tid) + ".out");
-            count_file << "win_id,bb_count" << std::endl;
+            count_file.open(trace_outdir + DIRSEP + "static_info." + std::to_string(tid) + ".out");
+            count_file << "win_id,bb_count,memref" << std::endl;
             for (auto it2 = win_mp.begin(); it2 != win_mp.end(); ++it2) {
-                count_file << it2->first << "," << it2->second << std::endl;
+                count_file << it2->first << "," << it2->second.first << "," << it2->second.second << std::endl;
             }
             count_file.close();
         }

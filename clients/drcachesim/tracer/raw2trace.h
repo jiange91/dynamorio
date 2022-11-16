@@ -800,7 +800,7 @@ protected:
      */
     std::string
     process_offline_entry(void *tls, const offline_entry_t *in_entry, 
-                          thread_id_t tid,  uint64_t *bb_count,
+                          thread_id_t tid,  uint64_t *bb_count, uint64_t *memref,
                           OUT bool *end_of_record, OUT bool *last_bb_handled)
     {
         trace_entry_t *buf_base = impl()->get_write_buffer(tls);
@@ -878,7 +878,7 @@ protected:
             DR_CHECK(reinterpret_cast<trace_entry_t *>(buf) == buf_base,
                      "We shouldn't have buffered anything before calling "
                      "append_bb_entries");
-            std::string result = append_bb_entries(tls, in_entry, last_bb_handled);
+            std::string result = append_bb_entries(tls, in_entry, last_bb_handled, memref);
             if (!result.empty())
                 return result;
         } else if (in_entry->addr.type == OFFLINE_TYPE_IFLUSH) {
@@ -1162,7 +1162,7 @@ private:
     }
 
     std::string
-    append_bb_entries(void *tls, const offline_entry_t *in_entry, OUT bool *handled)
+    append_bb_entries(void *tls, const offline_entry_t *in_entry, OUT bool *handled, uint64_t *memref)
     {
         std::string error = "";
         uint instr_count = in_entry->pc.instr_count;
@@ -1339,8 +1339,9 @@ private:
                             return error;
                         if (interrupted)
                             break;
+                        ++ *memref;
                     }
-                } else {
+                } else { 
                     for (uint j = 0; j < instr->num_mem_srcs(); j++) {
                         error = process_memref(
                             tls, &buf, instr, instr->mem_src_at(j), false, reg_vals,
@@ -1349,6 +1350,7 @@ private:
                             return error;
                         if (interrupted)
                             break;
+                        ++ *memref;
                     }
                     // We break before subsequent memrefs on an interrupt, though with
                     // today's tracer that will never happen (i#3958).
@@ -1360,6 +1362,7 @@ private:
                             return error;
                         if (interrupted)
                             break;
+                        ++ *memref;
                     }
                 }
             }
@@ -1839,7 +1842,7 @@ public:
     uint64
     get_statistic(raw2trace_statistic_t stat);
 
-    std::map<uint32_t, std::map<uint32_t, uint64_t>> tid_win_bbcount;
+    std::map<uint32_t, std::map<uint32_t, std::pair<uint64_t, uint64_t>>> tid2win2info;
 
 protected:
     // Overridable parts of the interface expected by trace_converter_t.
@@ -1875,6 +1878,7 @@ protected:
             , tid(0)
             , win_id(0)
             , bb_count(0)
+            , memref(0)
             , worker(0)
             , thread_file(nullptr)
             , out_archive(nullptr)
@@ -1895,6 +1899,7 @@ protected:
         thread_id_t tid;
         uint32_t win_id;
         uint64_t bb_count;
+        uint64_t memref;
         int worker;
         std::istream *thread_file;
         archive_ostream_t *out_archive; // May be nullptr.

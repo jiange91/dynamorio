@@ -188,7 +188,8 @@ analyzer_t::init_file_reader(const std::string &trace_path, int verbosity, uint3
                 if (fname.find("analysis") != std::string::npos 
                    || fname.find("timestamp") != std::string::npos
                    || fname.find("instr_summary") != std::string::npos
-                   || fname.find("bb_count") != std::string::npos)
+                   || fname.find("bb_count") != std::string::npos
+                   || fname.find("info") != std::string::npos)
                     continue;
                 // END
 

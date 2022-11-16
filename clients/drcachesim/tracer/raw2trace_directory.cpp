@@ -118,7 +118,9 @@ raw2trace_directory_t::open_thread_log_file(const char *basename, int win_id)
     // Skip the auxiliary files.
     if (strcmp(basename, DRMEMTRACE_MODULE_LIST_FILENAME) == 0 ||
         strcmp(basename, DRMEMTRACE_FUNCTION_LIST_FILENAME) == 0 ||
-        strcmp(basename, DRMEMTRACE_ENCODING_FILENAME) == 0)
+        strcmp(basename, DRMEMTRACE_ENCODING_FILENAME) == 0 || 
+        strcmp(basename, "numa.raw.lz4") == 0 ||
+        strcmp(basename, "single.raw.lz4") == 0)
         return "";
     // Skip any non-.raw in case someone put some other file in there.
     const char *basename_dot = strrchr(basename, '.');

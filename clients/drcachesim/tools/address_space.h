@@ -98,6 +98,7 @@ protected:
             num_branches = 0;
             num_non_branches = 0;
             memref_after_ts = false;
+            heap_loc = heap_ref = stack_loc = stack_ref = 0;
         }
 
         std::map<addr_t, uint32_t> ref_map;
@@ -111,13 +112,14 @@ protected:
         uint64_t num_non_branches;
         uint32_t tid;
         uint32_t window_id;
+        uint64_t heap_loc, heap_ref, stack_loc, stack_ref;
     };
 
     std::map<uint32_t, std::map<addr_t, uint32_t>*> tid_map;
     // std::map<uint32_t, std::vector<std::pair<addr_t, uint32_t>>* > tid_ts_map;
 
     void
-    print_shard_results(const shard_data_t *shard);
+    print_shard_results(shard_data_t *shard);
 
     void 
     print_shard_timestamps(const shard_data_t *shard);
@@ -138,6 +140,8 @@ protected:
     std::mutex shard_map_mutex_;
     std::vector<uint32_t> tid_lst;
     std::map<uint32_t, std::vector<uint32_t>> win_lst;
+
+    static const addr_t stack_bound = 0xfff00000000;
 };
 
 
