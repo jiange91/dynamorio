@@ -220,7 +220,6 @@ drmemtrace_analysis_tool_create(std::string trace_dir, uint32_t main_tid)
     } 
     // ADDED
     else if (op_simulator_type.get_value() == ADDRESS_SPACE) {
-        std::string sub = op_analyze_window_subset.get_value();
         address_space_knobs_t knobs;
         knobs.line_size = op_line_size.get_value();
         return address_space_t_tool_create(knobs);

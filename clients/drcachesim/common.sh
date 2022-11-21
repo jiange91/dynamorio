@@ -18,5 +18,6 @@ time build/bin64/drrun -t drcachesim -simulator_type address_space -line_size 8 
 time build/bin64/drrun -t drcachesim -simulator_type address_space -line_size 8 -jobs 3 -analyze_window_subset 0,2,4 -indir drmemtrace.sample.2936316.8302.dir
 
 
+time build/clients/bin64/drraw2trace -jobs 58 -indir drmemtrace.nyc_bench.1445636.9396.dir
 
 time build/bin64/drrun -t drcachesim -simulator_type address_space -line_size 8 -jobs 3 -analyze_window_subset 150,75,38 -indir drmemtrace.nyc.2843781.4348.dir

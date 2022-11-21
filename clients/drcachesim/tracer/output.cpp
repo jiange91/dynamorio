@@ -585,7 +585,7 @@ hit_window_limit(void *drcontext) {
     DR_ASSERT(data->init_header_size == header_size);
 
     data->cur_win_id = tracing_window.load();
-    printf("hit_window_limit: %d\n", data->cur_win_id);
+    // printf("hit_window_limit: %d\n", data->cur_win_id);
     data->cur_win_size = 0;
     open_new_thread_file(drcontext, data->cur_win_id);
 }
@@ -1060,7 +1060,7 @@ process_and_output_buffer(void *drcontext, bool skip_size_cap)
                 instru->append_thread_exit(buf_ptr, dr_get_thread_id(drcontext));
             buf_ptr += add;
             if (data->cur_win_id == tracing_window.load()) {
-                printf("open_new_window_dir\n");
+                // printf("open_new_window_dir\n");
                 tracing_window.fetch_add(1, std::memory_order_release);
                 open_new_window_dir2(tracing_window.load(std::memory_order_acquire));
             }

@@ -114,7 +114,7 @@ analyzer_multi_t::analyzer_multi_t()
         }
 
         std::vector<uint32_t> win_subset = arg_to_vec(op_analyze_window_subset.get_value());
-
+        
         uint32_t tmp;
         sscanf(tracedir.c_str(), "drmemtrace.%*[0-9A-Za-z_].%d.%d.%*[0-9A-Za-z_/.]", &main_tid, &tmp); 
         if (!init_file_reader(tracedir, op_verbose.get_value(), op_only_analyze_main_thread.get_value() ? main_tid : 0, win_subset))
@@ -165,17 +165,20 @@ analyzer_multi_t::~analyzer_multi_t()
 std::vector<uint32_t> 
 analyzer_multi_t::arg_to_vec(std::string str) {
     std::vector<uint32_t> vec;
+    bool flag = false;
     uint32_t win = 0;
     for (size_t i = 0; i < str.length(); ++i) {
         if ('0' <= str[i] && str[i] <= '9') {
+            flag = true;
             win = win * 10 + (str[i] - '0');
         }
         else {
+            flag = false;
             vec.push_back(win);
             win = 0;
         }
     }
-    if (win > 0)
+    if (flag)
         vec.push_back(win);
     return vec;
 }   

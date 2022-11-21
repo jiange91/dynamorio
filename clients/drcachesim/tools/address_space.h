@@ -124,7 +124,7 @@ protected:
     void 
     print_shard_timestamps(const shard_data_t *shard);
 
-    void
+    std::pair<std::pair<uint64_t, uint64_t>, std::pair<uint64_t, uint64_t>>
     print_total_results(uint32_t tid, const std::string& trace_path);
 
     void
