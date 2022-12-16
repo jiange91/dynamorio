@@ -141,7 +141,7 @@ protected:
     std::vector<uint32_t> tid_lst;
     std::map<uint32_t, std::vector<uint32_t>> win_lst;
 
-    static const addr_t stack_bound = 0xfff00000000;
+    static const addr_t stack_bound = 0x1fff0000000;
 };
 
 

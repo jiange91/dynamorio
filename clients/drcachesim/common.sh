@@ -1,3 +1,5 @@
+ echo 4096 | sudo tee  /sys/devices/system/node/node0/hugepages/hugepages-2048kB/nr_hugepages 
+ 
 time build/bin64/drrun -t drcachesim -trace_for_instrs 2000000000 -retrace_every_instrs 1 -offline -- ../AIFM/aifm/DataFrame/original/build/bin/nyc
 
 time build/bin64/drrun -t drcachesim -simulator_type address_space -line_size 8 -indir drmemtrace.linpack_1000.1246095.8142.dir
